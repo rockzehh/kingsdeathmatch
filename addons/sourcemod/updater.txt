@@ -1,0 +1,17 @@
+"Updater"
+{
+	"Information"
+	{
+		"Version"
+		{
+			"Latest"	"1.0.0.0-0"
+		}
+		
+		"Notes"	"Keeping track of kills and deaths now."
+	}
+	
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/ragingscout.smx"
+	}
+}
