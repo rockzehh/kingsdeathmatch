@@ -149,10 +149,10 @@ enum Openssl_Hash {
  * @ param any		data		Data passed to curl_easy_perform_thread()
  * @ noreturn
  */
-funcenum CURL_OnComplete
+typedef CURL_OnComplete
 {
-	public(Handle:hndl, CURLcode: code),
-	public(Handle:hndl, CURLcode: code , any:data),
+	public(Handle hndl, CURLcode  code),
+	public(Handle hndl, CURLcode  code , any data),
 };
 
 /**
@@ -163,10 +163,10 @@ funcenum CURL_OnComplete
  * @ param any		data				Data passed to curl_easy_send_recv()
  * @ return 								SendRecv_Act
  */
-funcenum CURL_OnSend
+typedef CURL_OnSend
 {
-	SendRecv_Act:public(Handle:hndl, CURLcode: code, const last_sent_dataSize),
-	SendRecv_Act:public(Handle:hndl, CURLcode: code, const last_sent_dataSize, any:data),
+	SendRecv_Act public(Handle hndl, CURLcode code, const last_sent_dataSize),
+	SendRecv_Act public(Handle hndl, CURLcode code, const last_sent_dataSize, any data),
 }
 
 /**
@@ -177,10 +177,10 @@ funcenum CURL_OnSend
  * @ param any		data		Data passed to curl_easy_send_recv()
  * @ return 						SendRecv_Act
  */
-funcenum CURL_OnReceive
+typedef CURL_OnReceive
 {
-	SendRecv_Act:public(Handle:hndl, CURLcode: code, const String:receiveData[], const dataSize),
-	SendRecv_Act:public(Handle:hndl, CURLcode: code, const String:receiveData[], const dataSize, any:data),
+	SendRecv_Act public(Handle hndl, CURLcode  code, const String receiveData[], const dataSize),
+	SendRecv_Act public(Handle hndl, CURLcode code, const String receiveData[], const dataSize, any data),
 }
 
 /**
@@ -190,22 +190,22 @@ funcenum CURL_OnReceive
  * @ param any		data		Data passed to Openssl_Hash_file()
  * @ noreturn
  */
-funcenum Openssl_Hash_Complete
+typedef Openssl_Hash_Complete
 {
-	public(const bool:success, const String:buffer[]),
-	public(const bool:success, const String:buffer[], any:data),
+	public(const bool success, const String buffer[]),
+	public(const bool success, const String buffer[], any data),
 }
 
 
-funcenum CURL_Function_CB
+typedef CURL_Function_CB
 {
 	// CURLOPT_WRITEFUNCTION
-	public(Handle:hndl, const String:buffer[], const bytes, const nmemb),
-	public(Handle:hndl, const String:buffer[], const bytes, const nmemb, any:data),
+	public(Handle hndl, const String buffer[], const bytes, const nmemb),
+	public(Handle hndl, const String buffer[], const bytes, const nmemb, any data),
 	
 	// CURLOPT_READFUNCTION
-	public(Handle:hndl, const bytes, const nmemb),
-	public(Handle:hndl, const bytes, const nmemb, any:data),
+	public(Handle hndl, const bytes, const nmemb),
+	public(Handle hndl, const bytes, const nmemb, any data),
 }
 
 /*************************************************************************************************/

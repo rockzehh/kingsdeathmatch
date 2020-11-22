@@ -4,14 +4,14 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.0.0.0-0"
+			"Latest"	"1.2.0"
 		}
 		
-		"Notes"	"Keeping track of kills and deaths now."
+		"Notes"	"It is now King's Deathmatch."
 	}
 	
 	"Files"
 	{
-		"Plugin"	"Path_SM/plugins/ragingscout.smx"
+		"Plugin"	"Path_SM/plugins/kingsdeathmatch.smx"
 	}
 }

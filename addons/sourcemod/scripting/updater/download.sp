@@ -6,16 +6,17 @@
 #include "updater/download_steamtools.sp"
 #include "updater/download_steamworks.sp"
 
-static QueuePack_URL = 0;
+DataPackPos QueuePack_URL;
 
-FinalizeDownload(index)
+void FinalizeDownload(int index)
 {
 	/* Strip the temporary file extension from downloaded files. */
-	decl String:newpath[PLATFORM_MAX_PATH], String:oldpath[PLATFORM_MAX_PATH];
-	new Handle:hFiles = Updater_GetFiles(index);
+	char newpath[PLATFORM_MAX_PATH];
+	char oldpath[PLATFORM_MAX_PATH];
+	Handle hFiles = Updater_GetFiles(index);
 	
-	new maxFiles = GetArraySize(hFiles);
-	for (new i = 0; i < maxFiles; i++)
+	int maxFiles = GetArraySize(hFiles);
+	for (int i = 0; i < maxFiles; i++)
 	{
 		GetArrayString(hFiles, i, newpath, sizeof(newpath));
 		Format(oldpath, sizeof(oldpath), "%s.%s", newpath, TEMP_FILE_EXT);
@@ -32,14 +33,14 @@ FinalizeDownload(index)
 	ClearArray(hFiles);
 }
 
-AbortDownload(index)
+void AbortDownload(int index)
 {
 	/* Delete all downloaded temporary files. */
-	decl String:path[PLATFORM_MAX_PATH];
-	new Handle:hFiles = Updater_GetFiles(index);
+	char path[PLATFORM_MAX_PATH];
+	Handle hFiles = Updater_GetFiles(index);
 	
-	new maxFiles = GetArraySize(hFiles);
-	for (new i = 0; i < maxFiles; i++)
+	int maxFiles = GetArraySize(hFiles);
+	for (int i = 0; i < maxFiles; i++)
 	{
 		GetArrayString(hFiles, 0, path, sizeof(path));
 		Format(path, sizeof(path), "%s.%s", path, TEMP_FILE_EXT);
@@ -53,17 +54,18 @@ AbortDownload(index)
 	ClearArray(hFiles);
 }
 
-ProcessDownloadQueue(bool:force=false)
+void ProcessDownloadQueue(bool force=false)
 {
 	if (!force && (g_bDownloading || !GetArraySize(g_hDownloadQueue)))
 	{
 		return;
 	}
 	
-	new Handle:hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
+	Handle hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
 	SetPackPosition(hQueuePack, QueuePack_URL);
 	
-	decl String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH];
+	char url[MAX_URL_LENGTH];
+	char dest[PLATFORM_MAX_PATH];
 	ReadPackString(hQueuePack, url, sizeof(url));
 	ReadPackString(hQueuePack, dest, sizeof(dest));
 	
@@ -112,16 +114,16 @@ ProcessDownloadQueue(bool:force=false)
 	}
 }
 
-public Action:Timer_RetryQueue(Handle:timer)
+public Action Timer_RetryQueue(Handle timer)
 {
 	ProcessDownloadQueue(true);
 	
 	return Plugin_Stop;
 }
 
-AddToDownloadQueue(index, const String:url[], const String:dest[])
+void AddToDownloadQueue(int index, const char[] url, const char[] dest)
 {
-	new Handle:hQueuePack = CreateDataPack();
+	Handle hQueuePack = CreateDataPack();
 	WritePackCell(hQueuePack, index);
 	
 	QueuePack_URL = GetPackPosition(hQueuePack);
@@ -133,13 +135,14 @@ AddToDownloadQueue(index, const String:url[], const String:dest[])
 	ProcessDownloadQueue();
 }
 
-DownloadEnded(bool:successful, const String:error[]="")
+void DownloadEnded(bool successful, const char[] error="")
 {
-	new Handle:hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
+	Handle hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
 	ResetPack(hQueuePack);
 	
-	decl String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH];
-	new index = ReadPackCell(hQueuePack);
+	char url[MAX_URL_LENGTH];
+	char dest[PLATFORM_MAX_PATH];
+	int index = ReadPackCell(hQueuePack);
 	ReadPackString(hQueuePack, url, sizeof(url));
 	ReadPackString(hQueuePack, dest, sizeof(dest));
 	
@@ -173,20 +176,20 @@ DownloadEnded(bool:successful, const String:error[]="")
 			if (successful)
 			{
 				// Check if this was the last file we needed.
-				decl String:lastfile[PLATFORM_MAX_PATH];
-				new Handle:hFiles = Updater_GetFiles(index);
+				char lastfile[PLATFORM_MAX_PATH];
+				Handle hFiles = Updater_GetFiles(index);
 				
 				GetArrayString(hFiles, GetArraySize(hFiles) - 1, lastfile, sizeof(lastfile));
 				Format(lastfile, sizeof(lastfile), "%s.%s", lastfile, TEMP_FILE_EXT);
 				
 				if (StrEqual(dest, lastfile))
 				{
-					new Handle:hPlugin = IndexToPlugin(index);
+					Handle hPlugin = IndexToPlugin(index);
 					
 					Fwd_OnPluginUpdating(hPlugin);
 					FinalizeDownload(index);
 					
-					decl String:sName[64];
+					char sName[64];
 					if (!GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName)))
 					{
 						strcopy(sName, sizeof(sName), "Null");
@@ -204,7 +207,7 @@ DownloadEnded(bool:successful, const String:error[]="")
 				AbortDownload(index);
 				Updater_SetStatus(index, Status_Error);
 				
-				decl String:filename[64];
+				char filename[64];
 				GetPluginFilename(IndexToPlugin(index), filename, sizeof(filename));
 				Updater_Log("Error downloading update for plugin: %s", filename);
 				Updater_Log("  [0]  URL: %s", url);
