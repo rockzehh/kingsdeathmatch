@@ -16,7 +16,7 @@ Extract the zip file into your server directory with [SourceMod](https://www.sou
 
 ## Commands
 Command | Description | Type | Extra
---- | --- | --- | --- | ---
+--- | --- | --- | ---
 sm_boost|Gives you a big jump boost.|Client|
 sm_credits|Brings up the credit menu.|Client|
 sm_distort|Distorts your player model.|Client|

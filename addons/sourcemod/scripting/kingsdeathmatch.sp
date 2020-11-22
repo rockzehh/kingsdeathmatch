@@ -5,7 +5,7 @@
 //#define DEBUG
 
 #define PLUGIN_AUTHOR "RockZehh"
-#define PLUGIN_VERSION "1.2.0"
+#define PLUGIN_VERSION "1.2.1"
 
 #include <sourcemod>
 #include <morecolors>
@@ -137,7 +137,7 @@ public void OnPluginStart()
 	g_cvJumpBoost = CreateConVar("kdm_credits_jumpboost", "500.0", "Will be added later.");
 	g_cvNoFallDamage = CreateConVar("kdm_npfalldamage", "1", "Will be added later.", _, true, 0.1, true, 1.0);
 	g_cvShowAllKills = CreateConVar("kdm_hud_showallkills", "1", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvSpawnRPG = CreateConVar("kdm_allow_rpg", "1", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvSpawnRPG = CreateConVar("kdm_allow_rpg", "0", "Will be added later.", _, true, 0.1, true, 1.0);
 	g_cvUpgradePriceDistort = CreateConVar("kdm_credits_distort_price", "125", "Will be added later.");
 	g_cvUpgradePriceHealthBoost = CreateConVar("kdm_credits_healthboost_price", "350", "Will be added later.");
 	g_cvUpgradePriceJumpBoost = CreateConVar("kdm_credits_jumpboost_price", "175", "Will be added later.");
@@ -203,7 +203,7 @@ public void OnMapStart()
 		{
 			GetEntityClassname(i, sClassname, sizeof(sClassname));
 			
-			if (StrEqual(sClassname, "weapon_rpg") || StrEqual(sClassname, "item_rpg_round"))
+			if (StrEqual(sClassname, "weapon_rpg") || StrEqual(sClassname, "item_rpg_round") && g_bRPG)
 			{
 				AcceptEntityInput(i, "kill");
 			}
@@ -775,7 +775,7 @@ public Action Timer_RPGRemove(Handle hTimer)
 		{
 			GetEntityClassname(i, sClassname, sizeof(sClassname));
 			
-			if (StrEqual(sClassname, "weapon_rpg") || StrEqual(sClassname, "item_rpg_round"))
+			if (StrEqual(sClassname, "weapon_rpg") || StrEqual(sClassname, "item_rpg_round") && g_bRPG)
 			{
 				AcceptEntityInput(i, "kill");
 			}
