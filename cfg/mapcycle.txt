@@ -1,9 +1,0 @@
-dm_alcys_ravenholm
-dm_killbox_2014_rc1
-dm_rockfallprison
-dm_killbox_final
-dm_citadel
-dm_bridge_b2
-dm_donutbox_tsgk_rc3
-dm_lost_monastery_v1
-dm_killbox_portal_bwo_2

@@ -4,10 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.2.0"
+			"Latest"	"1.2.1"
+			"Previous"	"1.2.0"
 		}
 		
-		"Notes"	"It is now King's Deathmatch."
+		"Notes"	"Adding the long jump module."
 	}
 	
 	"Files"

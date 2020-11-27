@@ -2,7 +2,7 @@
 
 #pragma semicolon 1
 
-//#define DEBUG
+#define DEBUG
 
 #define PLUGIN_AUTHOR "RockZehh"
 #define PLUGIN_VERSION "1.2.1"
@@ -13,6 +13,7 @@
 #include <sdkhooks>
 #include <smlib/clients>
 #include <geoip>
+#include <buttondetector>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
@@ -30,18 +31,30 @@
 bool g_bAllKills;
 bool g_bDefault357;
 bool g_bJumpBoost[MAXPLAYERS + 1];
+bool g_bJumpPressed[MAXPLAYERS + 1];
+bool g_bLongJump[MAXPLAYERS + 1];
+bool g_bNoAdvertisements;
 bool g_bNoFallDamage;
 bool g_bPlayer[MAXPLAYERS + 1];
+bool g_bPreferPrivateMatches[MAXPLAYERS + 1];
+bool g_bPrivateMatchRunning;
+bool g_bPrivateMatches;
 bool g_bRPG;
+bool g_bShittyLongJump;
 
+char g_sAdvertisementsDatabase[PLATFORM_MAX_PATH];
 char g_sClientsDatabase[PLATFORM_MAX_PATH];
+char g_sServerPassword[128];
 
+ConVar g_cvAllowPrivateMatches;
 ConVar g_cvCrowbarDamage;
 ConVar g_cvDefault357;
 ConVar g_cvHealthBoost;
 ConVar g_cvHealthModifier;
 ConVar g_cvJumpBoost;
+ConVar g_cvLongJumpPush;
 ConVar g_cvNoFallDamage;
+ConVar g_cvPassword;
 ConVar g_cvShowAllKills;
 ConVar g_cvSpawnRPG;
 ConVar g_cvUpgradePriceDistort;
@@ -55,6 +68,7 @@ float g_fCommand_Duration[] =
 };
 float g_fHealthModifier;
 float g_fJumpBoost;
+float g_fPushForce;
 
 Handle g_hAdvertisments;
 Handle g_hStatHud[MAXPLAYERS + 1];
@@ -111,15 +125,17 @@ public void OnLibraryAdded(const char[] sName)
 //Plugin Voids
 public void OnPluginStart()
 {
-	char sPath[PLATFORM_MAX_PATH];
-
-	for (int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i < MaxClients; i++)
 	{
-		if (IsClientConnected(i))
+		if (IsClientAuthorized(i))
 		{
-			SDKHook(i, SDKHook_OnTakeDamage, OnTakeDamage);
+			OnClientPutInServer(i);
 		}
 	}
+
+	AutoExecConfig(true, "kings-deathmatch");
+
+	char sPath[PLATFORM_MAX_PATH];
 
 	BuildPath(Path_SM, sPath, sizeof(sPath), "data/kingsdeathmatch");
 	if (!DirExists(sPath))
@@ -130,12 +146,15 @@ public void OnPluginStart()
 	BuildPath(Path_SM, g_sClientsDatabase, PLATFORM_MAX_PATH, "data/kingsdeathmatch/clients.txt");
 
 	CreateConVar("kings-deathmatch", "1", "Notifies the server that the plugin is running.");
+	g_cvAllowPrivateMatches = CreateConVar("kdm_allow_private_matches", "1", "Will be added later.", _, true, 0.1, true, 1.0);
 	g_cvCrowbarDamage = CreateConVar("kdm_crowbar_damage", "250", "Will be added later.");
 	g_cvDefault357 = CreateConVar("kdm_default_weapon_357", "1", "Will be added later.", _, true, 0.1, true, 1.0);
 	g_cvHealthBoost = CreateConVar("kdm_credits_healthboost", "75", "Will be added later.");
 	g_cvHealthModifier = CreateConVar("kdm_health_modifier", "0.5", "Will be added later.");
 	g_cvJumpBoost = CreateConVar("kdm_credits_jumpboost", "500.0", "Will be added later.");
+	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "500.0", "Will be added later.");
 	g_cvNoFallDamage = CreateConVar("kdm_npfalldamage", "1", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvPassword = FindConVar("sv_password");
 	g_cvShowAllKills = CreateConVar("kdm_hud_showallkills", "1", "Will be added later.", _, true, 0.1, true, 1.0);
 	g_cvSpawnRPG = CreateConVar("kdm_allow_rpg", "0", "Will be added later.", _, true, 0.1, true, 1.0);
 	g_cvUpgradePriceDistort = CreateConVar("kdm_credits_distort_price", "125", "Will be added later.");
@@ -149,18 +168,22 @@ public void OnPluginStart()
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
 	g_fHealthModifier = g_cvHealthModifier.FloatValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
+	g_fPushForce = g_cvLongJumpPush.FloatValue;
 	g_bNoFallDamage = g_cvNoFallDamage.BoolValue;
+	g_bPrivateMatches = g_cvAllowPrivateMatches.BoolValue;
 	g_bRPG = g_cvSpawnRPG.BoolValue;
 
 	g_iUpgrade_Prices[0] = g_cvUpgradePriceDistort.IntValue;
 	g_iUpgrade_Prices[1] = g_cvUpgradePriceHealthBoost.IntValue;
 	g_iUpgrade_Prices[2] = g_cvUpgradePriceJumpBoost.IntValue;
 
+	g_cvAllowPrivateMatches.AddChangeHook(OnConVarsChanged);
 	g_cvCrowbarDamage.AddChangeHook(OnConVarsChanged);
 	g_cvDefault357.AddChangeHook(OnConVarsChanged);
 	g_cvHealthBoost.AddChangeHook(OnConVarsChanged);
 	g_cvHealthModifier.AddChangeHook(OnConVarsChanged);
 	g_cvJumpBoost.AddChangeHook(OnConVarsChanged);
+	g_cvLongJumpPush.AddChangeHook(OnConVarsChanged);
 	g_cvNoFallDamage.AddChangeHook(OnConVarsChanged);
 	g_cvShowAllKills.AddChangeHook(OnConVarsChanged);
 	g_cvSpawnRPG.AddChangeHook(OnConVarsChanged);
@@ -175,6 +198,16 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_credits", Command_Credits, "Brings up the credit menu.");
 	RegConsoleCmd("sm_distort", Command_Distort, "Distorts your player model.");
 	RegConsoleCmd("sm_healthboost", Command_HealthBoost, "Adds a small boost of health.");
+	RegConsoleCmd("sm_privatematch", Command_PrivateMatch, "Sets the match to private with a password.");
+	RegConsoleCmd("sm_shittylongjump", Command_ShittyLongJump);
+
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientConnected(i))
+		{
+			SDKHook(i, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
+		}
+	}
 	
 	if (LibraryExists("updater"))
 	{
@@ -188,7 +221,7 @@ public void OnPluginEnd()
 	{
 		if (IsClientConnected(i))
 		{
-			SDKUnhook(i, SDKHook_OnTakeDamage, OnTakeDamage);
+			SDKUnhook(i, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
 		}
 	}
 }
@@ -213,6 +246,8 @@ public void OnMapStart()
 	g_hAdvertisments = CreateTimer(45.0, Timer_Advertisment, _, TIMER_REPEAT);
 	
 	CreateTimer(60.0, Timer_RPGRemove, _, TIMER_REPEAT);
+	
+	g_bPrivateMatchRunning = false;
 }
 
 public void OnMapEnd()
@@ -223,9 +258,11 @@ public void OnMapEnd()
 	{
 		if (IsClientConnected(i))
 		{
-			SDKUnhook(i, SDKHook_OnTakeDamage, OnTakeDamage);
+			SDKUnhook(i, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
 		}
 	}
+
+	g_bPrivateMatchRunning = false;
 }
 
 public void OnClientPutInServer(int iClient)
@@ -233,7 +270,9 @@ public void OnClientPutInServer(int iClient)
 	char sIP[32], sCountry[4], sName[64];
 	
 	g_bJumpBoost[iClient] = false;
+	g_bJumpPressed[iClient] = false;
 	g_bPlayer[iClient] = true;
+	g_bPreferPrivateMatches[iClient] = false;
 	
 	g_hStatHud[iClient] = CreateTimer(0.1, Timer_StatHud, iClient, TIMER_REPEAT);
 	
@@ -251,23 +290,28 @@ public void OnClientPutInServer(int iClient)
 	
 	SetClientName(iClient, sName);
 	
-	SDKHook(iClient, SDKHook_OnTakeDamage, OnTakeDamage);
-	SDKHookEx(iClient, SDKHook_FireBulletsPost, FireBulletsPost);
-	SDKHookEx(iClient, SDKHook_WeaponSwitchPost, WeaponSwitchPost);
+	SDKHook(iClient, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
+	SDKHookEx(iClient, SDKHook_FireBulletsPost, Hook_FireBulletsPost);
+	SDKHook(iClient, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
+	SDKHookEx(iClient, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
 	
 	LoadClient(iClient);
+	SaveClient(iClient);
 }
 
 public void OnClientDisconnect(int iClient)
 {
 	g_bJumpBoost[iClient] = false;
+	g_bJumpPressed[iClient] = false;
 	g_bPlayer[iClient] = false;
 	
-	SDKUnhook(iClient, SDKHook_OnTakeDamage, OnTakeDamage);
+	SDKUnhook(iClient, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
 	
 	CloseHandle(g_hStatHud[iClient]);
 	
 	SaveClient(iClient);
+
+	g_bPreferPrivateMatches[iClient] = false;
 
 	g_iAllDeaths[iClient] = 0;
 	g_iAllKills[iClient] = 0;
@@ -284,7 +328,9 @@ public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
 	g_fHealthModifier = g_cvHealthModifier.FloatValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
+	g_fPushForce = g_cvLongJumpPush.FloatValue;
 	g_bNoFallDamage = g_cvNoFallDamage.BoolValue;
+	g_bPrivateMatches = g_cvAllowPrivateMatches.BoolValue;
 	g_bRPG = g_cvSpawnRPG.BoolValue;
 
 	g_iUpgrade_Prices[0] = g_cvUpgradePriceDistort.IntValue;
@@ -304,6 +350,11 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 		fVelocity[2] = g_bJumpBoost[iClient] ? g_fJumpBoost : 100.0;
 		TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fVelocity);
 	}
+
+	if (iButtons & IN_DUCK && iButtons & IN_JUMP && iFlags & FL_ONGROUND && g_bShittyLongJump)
+	{
+		LongJumpFunction(iClient);
+	}
 	
 	int iBitsActiveDevices = GetEntProp(iClient, Prop_Send, "m_bitsActiveDevices");
 	
@@ -320,7 +371,45 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 	}
 }
 
+/*
+public void OnButtonPressed(int iClient, int iButton)
+{
+	if(iButton == BD_DUCK)
+	{
+		if(iButton == BD_JUMP && !g_bJumpPressed[iClient])
+		{
+			LongJumpFunction(iClient);
+
+			g_bJumpPressed[iClient] = true;
+
+			PrintToChat(iClient, "Jump Was Pressed");
+		}
+	}
+	/*if (iButtons & IN_DUCK && iButtons & IN_JUMP && iFlags & FL_ONGROUND)
+	{
+		LongJumpFunction(iClient);
+	}
+}
+
+public void OnButtonReleased(int iClient, int iButton)
+{
+	if(iButton == ~BD_JUMP && g_bJumpPressed[iClient])
+	{
+		PrintToChat(iClient, "Jump Was Unpressed");
+
+		g_bJumpPressed[iClient] = false;
+	}
+}*/
+
 //Plugin Commands
+public Action Command_ShittyLongJump(int iClient, int iArgs)
+{
+	g_bShittyLongJump = !g_bShittyLongJump;
+
+	PrintToChatAll("Shitty long jump is %s.", g_bShittyLongJump ? "enabled" : "disabled");
+
+	return Plugin_Handled;
+}
 public Action Command_Credits(int iClient, int iArgs)
 {
 	char sDescription[128];
@@ -352,9 +441,7 @@ public Action Command_Distort(int iClient, int iArgs)
 	} else {
 		g_iCredits[iClient] -= g_iUpgrade_Prices[0];
 
-		int iCommandDuration = view_as<int>(g_fCommand_Duration[0]);
-		
-		CPrintToChat(iClient, "You have bought {green}distort{default} for {green}%i{default} credits for {green}%i{default} seconds.", g_iUpgrade_Prices[0], iCommandDuration);
+		CPrintToChat(iClient, "You have bought {green}distort{default} for {green}%i{default} credits for {green}%f{default} seconds.", g_iUpgrade_Prices[0], g_fCommand_Duration[0]);
 		
 		SetEntityRenderFx(iClient, RENDERFX_DISTORT);
 		
@@ -394,9 +481,7 @@ public Action Command_JumpBoost(int iClient, int iArgs)
 	} else {
 		g_iCredits[iClient] -= g_iUpgrade_Prices[2];
 
-		int iCommandDuration = view_as<int>(g_fCommand_Duration[0]);
-		
-		CPrintToChat(iClient, "You have bought {green}jump boost{default} for {green}%i{default} credits for {green}%i{default} seconds.", g_iUpgrade_Prices[2], iCommandDuration);
+		CPrintToChat(iClient, "You have bought {green}jump boost{default} for {green}%i{default} credits for {green}%f{default} seconds.", g_iUpgrade_Prices[2], g_fCommand_Duration[1]);
 		
 		g_bJumpBoost[iClient] = true;
 		
@@ -408,10 +493,27 @@ public Action Command_JumpBoost(int iClient, int iArgs)
 	return Plugin_Handled;
 }
 
+public Action Command_PrivateMatch(int iClient, int iArgs)
+{
+	if(!g_bPrivateMatches)
+	{
+		CPrintToChat(iClient, "Private matches are disabled.");
+		return Plugin_Handled;
+	}
+
+	Format(g_sServerPassword, sizeof(g_sServerPassword), "kings-%i%i%i", GetRandomInt(0, 24), GetRandomInt(24, 64), GetRandomInt(64, 99));
+
+	g_cvPassword.SetString(g_sServerPassword);
+
+	g_bPrivateMatchRunning = true;
+
+	return Plugin_Handled;
+}
+
 //Plugin Stocks/Extra Voids
 
 //SDKHooks
-public void FireBulletsPost(int iClient, int iShots, char[] sWeaponname)
+public void Hook_FireBulletsPost(int iClient, int iShots, char[] sWeaponname)
 {
 	int iWeapon = GetEntPropEnt(iClient, Prop_Send, "m_hActiveWeapon");
 	
@@ -449,6 +551,8 @@ public void LoadClient(int iClient)
 	g_iAllDeaths[iClient] = LoadInteger(kvVault, sAuthID, "all_deaths", 0);
 	
 	g_iAllKills[iClient] = LoadInteger(kvVault, sAuthID, "all_kills", 0);
+
+	//g_bPreferPrivateMatches[iClient] = view_as<bool>(LoadInteger(kvVault, sAuthID, "prefer_private", 0));
 	
 	kvVault.Rewind();
 	
@@ -457,8 +561,21 @@ public void LoadClient(int iClient)
 	kvVault.Close();
 }
 
+public void LongJumpFunction(int iClient)
+{	
+	float fEyeAngles[3], fPushForce[3];
+	
+	GetClientEyeAngles(iClient, fEyeAngles);
+
+	fPushForce[0] = (g_fPushForce * Cosine(DegToRad(fEyeAngles[1])));
+	fPushForce[1] = (g_fPushForce * Sine(DegToRad(fEyeAngles[1])));
+	fPushForce[2] = (-50.0 * Sine(DegToRad(fEyeAngles[0])));
+
+	TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fPushForce);
+}
+
 //SDKHooks
-public Action OnTakeDamage(int iClient, int &iAttacker, int &iInflictor, float &fDamage, int &iDamagetype)
+public Action Hook_OnTakeDamage(int iClient, int &iAttacker, int &iInflictor, float &fDamage, int &iDamagetype)
 {
 	bool bSuicide;
 	char sWeapon[64];
@@ -518,9 +635,10 @@ public void SaveClient(int iClient)
 	
 	kvVault.ImportFromFile(g_sClientsDatabase);
 	
-	SaveInteger(kvVault, sAuthID, "credits", g_iCredits[iClient]);
 	SaveInteger(kvVault, sAuthID, "all_deaths", g_iDeaths[iClient]);
 	SaveInteger(kvVault, sAuthID, "all_Kills", g_iKills[iClient]);
+	SaveInteger(kvVault, sAuthID, "credits", g_iCredits[iClient]);
+	//SaveInteger(kvVault, sAuthID, "default_weapon", view_as<int>(g_bPreferPrivateMatches[iClient]));
 	
 	kvVault.ExportToFile(g_sClientsDatabase);
 	
@@ -547,13 +665,20 @@ public void SaveInteger(KeyValues kvVault, char[] sKey, char[] sSaveKey, int iVa
 }
 
 //SDKHooks
-public void WeaponSwitchPost(int iClient, int iWeapon)
+public void Hook_WeaponSwitchPost(int iClient, int iWeapon)
 {
 	if (iWeapon != -1)
 	{
 		ReFillWeapon(iClient, iWeapon);
 	}
 }
+
+
+public Action Hook_WeaponCanSwitchTo(int iClient, int iWeapon) 
+{
+	SetEntityFlags(iClient, GetEntityFlags(iClient) | FL_ONGROUND);
+}
+
 
 //Plugin Menus
 public int Menu_Credits(Menu hMenu, MenuAction iAction, int iParam1, int iParam2)
@@ -616,9 +741,12 @@ public Action Event_PlayerDeath(Handle hEvent, char[] sName, bool bDontBroadcast
 	{
 		if (iAttacker == -1 || iAttacker == 0)
 		{
+			g_iAllDeaths[iClient]++;
 			g_iDeaths[iClient]++;
 		} else {
+			g_iAllKills[iAttacker]++;
 			g_iKills[iAttacker]++;
+			g_iAllDeaths[iClient]++;
 			g_iDeaths[iClient]++;
 			
 			g_iCredits[iAttacker] += iRandom;
@@ -628,7 +756,9 @@ public Action Event_PlayerDeath(Handle hEvent, char[] sName, bool bDontBroadcast
 			SaveClient(iClient);
 		}
 	} else {
+		g_iAllKills[iClient]--;
 		g_iKills[iClient]--;
+		g_iAllDeaths[iClient]++;
 		g_iDeaths[iClient]++;
 		
 		g_iCredits[iClient] -= iRandom;
@@ -746,14 +876,14 @@ public Action Timer_StatHud(Handle hTimer, any iClient)
 	
 	if (IsClientInGame(iClient))
 	{
-		fAllKTD = ((g_iAllDeaths[iClient] == 0) ? 0.0 : view_as<float>(g_iAllKills[iClient]) / view_as<float>(g_iAllDeaths[iClient]));//FloatDiv(float(g_iKills[iClient]), float(g_iDeaths[iClient])));
-		fRoundKTD = ((g_iDeaths[iClient] == 0) ? 0.0 : view_as<float>(g_iKills[iClient]) / view_as<float>(g_iDeaths[iClient]));//FloatDiv(float(g_iKills[iClient]), float(g_iDeaths[iClient])));
+		fAllKTD = ((g_iAllDeaths[iClient] <= 0.0) ? 0.0 : view_as<float>(g_iAllKills[iClient]) / view_as<float>(g_iAllDeaths[iClient]));//FloatDiv(float(g_iKills[iClient]), float(g_iDeaths[iClient])));
+		fRoundKTD = ((g_iDeaths[iClient] <= 0.0) ? 0.0 : view_as<float>(g_iKills[iClient]) / view_as<float>(g_iDeaths[iClient]));//FloatDiv(float(g_iKills[iClient]), float(g_iDeaths[iClient])));
 		
 		if(g_bAllKills)
 		{
-			Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n%.1f All-Time KTD", iClient, g_iCredits[iClient], fAllKTD);
+			g_bPrivateMatchRunning ? Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n%.1f All-Time KTD\nServer Password: %s", iClient, g_iCredits[iClient], fAllKTD, g_sServerPassword) : Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n%.1f All-Time KTD", iClient, g_iCredits[iClient], fAllKTD);
 		}else{
-			Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i", iClient, g_iCredits[iClient]);
+			g_bPrivateMatchRunning ? Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\nServer Password: %s", iClient, g_iCredits[iClient], g_sServerPassword) : Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i", iClient, g_iCredits[iClient]);
 		}
 		Format(sStatsHud[1], sizeof(sStatsHud[]), "Stats:\n%i Kills\n%i Deaths\n%.1f Round KTD\nTimeleft: %d:%02d", g_iKills[iClient], g_iDeaths[iClient], fRoundKTD, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60));
 		

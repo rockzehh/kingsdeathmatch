@@ -21,6 +21,7 @@ sm_boost|Gives you a big jump boost.|Client|
 sm_credits|Brings up the credit menu.|Client|
 sm_distort|Distorts your player model.|Client|
 sm_healthboost|Adds a small boost of health.|Client|
+sm_privatematch|Sets the match to private with a password.|Client|
 
 ## Additional Information
 This plugin is designed with Half-Life 2: Deathmatch in mind. This may work on other source games, but it is not officially tested. All of the plugins functions are open to other plugins using natives, thus making multiple plugins a breeze.
