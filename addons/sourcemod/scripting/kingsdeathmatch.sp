@@ -546,19 +546,24 @@ public void LoadClient(int iClient)
 	
 	kvVault.JumpToKey(sAuthID, false);
 	
-	int iCredits = LoadInteger(kvVault, sAuthID, "credits", 1500);
-	
 	g_iAllDeaths[iClient] = LoadInteger(kvVault, sAuthID, "all_deaths", 0);
 	
 	g_iAllKills[iClient] = LoadInteger(kvVault, sAuthID, "all_kills", 0);
 
-	//g_bPreferPrivateMatches[iClient] = view_as<bool>(LoadInteger(kvVault, sAuthID, "prefer_private", 0));
+	g_iCredits[iClient] = LoadInteger(kvVault, sAuthID, "credits", 1500);
 	
 	kvVault.Rewind();
 	
-	g_iCredits[iClient] = iCredits;
-	
 	kvVault.Close();
+}
+
+public void LoadString(KeyValues kvVault, const char[] sKey, const char[] sSaveKey, const char[] sDefaultValue, char sReference[256])
+{
+	kvVault.JumpToKey(sKey, false);
+	
+	kvVault.GetString(sSaveKey, sReference, 256, sDefaultValue);
+
+	kvVault.Rewind();
 }
 
 public void LongJumpFunction(int iClient)
@@ -638,7 +643,6 @@ public void SaveClient(int iClient)
 	SaveInteger(kvVault, sAuthID, "all_deaths", g_iAllDeaths[iClient]);
 	SaveInteger(kvVault, sAuthID, "all_Kills", g_iAllKills[iClient]);
 	SaveInteger(kvVault, sAuthID, "credits", g_iCredits[iClient]);
-	//SaveInteger(kvVault, sAuthID, "default_weapon", view_as<int>(g_bPreferPrivateMatches[iClient]));
 	
 	kvVault.ExportToFile(g_sClientsDatabase);
 	
@@ -662,6 +666,15 @@ public void SaveInteger(KeyValues kvVault, char[] sKey, char[] sSaveKey, int iVa
 		
 		kvVault.Rewind();
 	}
+}
+
+public void SaveString(KeyValues kvVault, const char[] sKey, const char[] sSaveKey, const char[] sVariable)
+{
+	kvVault.JumpToKey(sKey, true);
+	
+	kvVault.SetString(sSaveKey, sVariable);
+
+	kvVault.Rewind();
 }
 
 //SDKHooks

@@ -1,58 +1,26 @@
 "Credits"
 {
-	"STEAM_0:1:47194373"
+	"STEAM_0:1:47194373" //Zach
 	{
-		"Credits"		"899"
-		"all_deaths"		"104"
-		"prefer_private"		"0"
+		"all_deaths"	"104"
 		"all_Kills"		"113"
-		"default_weapon"		"0"
+		"Credits"		"899"
 	}
-	"STEAM_0:0:55314840"
+	"STEAM_0:0:55314840" //James
 	{
-		"Credits"		"2526"
-		"all_deaths"		"34"
-		"all_Kills"		"63"
-		"prefer_private"		"0"
+		"all_deaths"	"196"
+		"all_Kills"		"272"
+		"Credits"		"3930"
 	}
-	"STEAM_0:1:7644034"
+	"STEAM_0:0:87261598" //Momo
 	{
-		"Credits"		"1500"
-		"all_deaths"		"1"
-		"all_Kills"		"0"
-		"prefer_private"		"0"
+		"all_deaths"	"290"
+		"all_Kills"		"293"
+		"Credits"		"5560"
 	}
-	"STEAM_0:1:566841848"
+	"STEAM_0:1:219381959" //Danny
 	{
-		"Credits"		"0"
-		"all_deaths"		"0"
-		"all_Kills"		"0"
-		"prefer_private"		"0"
-	}
-	"STEAM_0:0:87261598"
-	{
-		"all_deaths"		"13"
-		"Credits"		"2265"
-		"default_weapon"		"0"
-		"all_Kills"		"2"
-	}
-	"STEAM_0:1:22057517"
-	{
-		"all_deaths"		"0"
-		"all_Kills"		"3"
-		"Credits"		"1532"
-		"default_weapon"		"0"
-	}
-	"STEAM_0:0:26234693"
-	{
-		"all_deaths"		"1"
-		"all_Kills"		"1"
-		"Credits"		"1515"
-		"default_weapon"		"0"
-	}
-	"STEAM_0:1:219381959"
-	{
-		"all_deaths"		"143"
+		"all_deaths"	"143"
 		"all_Kills"		"60"
 		"Credits"		"1337"
 	}
