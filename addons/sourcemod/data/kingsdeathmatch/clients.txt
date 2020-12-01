@@ -1,0 +1,59 @@
+"Credits"
+{
+	"STEAM_0:1:47194373"
+	{
+		"Credits"		"899"
+		"all_deaths"		"104"
+		"prefer_private"		"0"
+		"all_Kills"		"113"
+		"default_weapon"		"0"
+	}
+	"STEAM_0:0:55314840"
+	{
+		"Credits"		"2526"
+		"all_deaths"		"34"
+		"all_Kills"		"63"
+		"prefer_private"		"0"
+	}
+	"STEAM_0:1:7644034"
+	{
+		"Credits"		"1500"
+		"all_deaths"		"1"
+		"all_Kills"		"0"
+		"prefer_private"		"0"
+	}
+	"STEAM_0:1:566841848"
+	{
+		"Credits"		"0"
+		"all_deaths"		"0"
+		"all_Kills"		"0"
+		"prefer_private"		"0"
+	}
+	"STEAM_0:0:87261598"
+	{
+		"all_deaths"		"13"
+		"Credits"		"2265"
+		"default_weapon"		"0"
+		"all_Kills"		"2"
+	}
+	"STEAM_0:1:22057517"
+	{
+		"all_deaths"		"0"
+		"all_Kills"		"3"
+		"Credits"		"1532"
+		"default_weapon"		"0"
+	}
+	"STEAM_0:0:26234693"
+	{
+		"all_deaths"		"1"
+		"all_Kills"		"1"
+		"Credits"		"1515"
+		"default_weapon"		"0"
+	}
+	"STEAM_0:1:219381959"
+	{
+		"all_deaths"		"143"
+		"all_Kills"		"60"
+		"Credits"		"1337"
+	}
+}

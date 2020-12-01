@@ -635,8 +635,8 @@ public void SaveClient(int iClient)
 	
 	kvVault.ImportFromFile(g_sClientsDatabase);
 	
-	SaveInteger(kvVault, sAuthID, "all_deaths", g_iDeaths[iClient]);
-	SaveInteger(kvVault, sAuthID, "all_Kills", g_iKills[iClient]);
+	SaveInteger(kvVault, sAuthID, "all_deaths", g_iAllDeaths[iClient]);
+	SaveInteger(kvVault, sAuthID, "all_Kills", g_iAllKills[iClient]);
 	SaveInteger(kvVault, sAuthID, "credits", g_iCredits[iClient]);
 	//SaveInteger(kvVault, sAuthID, "default_weapon", view_as<int>(g_bPreferPrivateMatches[iClient]));
 	
