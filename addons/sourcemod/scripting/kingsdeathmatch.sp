@@ -7,13 +7,14 @@
 #define PLUGIN_AUTHOR "RockZehh"
 #define PLUGIN_VERSION "1.2.1"
 
+#define MAX_BUTTONS 26
+
 #include <sourcemod>
 #include <morecolors>
 #include <sdktools>
 #include <sdkhooks>
 #include <smlib/clients>
 #include <geoip>
-#include <buttondetector>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
@@ -29,10 +30,11 @@
 #define UPDATE_URL    "https://raw.githubusercontent.com/rockzehh/kingsdeathmatch/master/addons/sourcemod/updater.txt"
 
 bool g_bAllKills;
-bool g_bDefault357;
+bool g_bDistort[MAXPLAYERS + 1];
 bool g_bJumpBoost[MAXPLAYERS + 1];
-bool g_bJumpPressed[MAXPLAYERS + 1];
-bool g_bLongJump[MAXPLAYERS + 1];
+bool g_bLongJumpPressed[MAXPLAYERS + 1];
+bool g_bLongJump[MAXPLAYERS + 1][2];
+bool g_bMenu;
 bool g_bNoAdvertisements;
 bool g_bNoFallDamage;
 bool g_bPlayer[MAXPLAYERS + 1];
@@ -40,15 +42,15 @@ bool g_bPreferPrivateMatches[MAXPLAYERS + 1];
 bool g_bPrivateMatchRunning;
 bool g_bPrivateMatches;
 bool g_bRPG;
-bool g_bShittyLongJump;
 
 char g_sAdvertisementsDatabase[PLATFORM_MAX_PATH];
 char g_sClientsDatabase[PLATFORM_MAX_PATH];
+char g_sDefaultWeapon[MAXPLAYERS + 1][64];
 char g_sServerPassword[128];
 
 ConVar g_cvAllowPrivateMatches;
 ConVar g_cvCrowbarDamage;
-ConVar g_cvDefault357;
+ConVar g_cvDisableAdvertisements;
 ConVar g_cvHealthBoost;
 ConVar g_cvHealthModifier;
 ConVar g_cvJumpBoost;
@@ -60,6 +62,8 @@ ConVar g_cvSpawnRPG;
 ConVar g_cvUpgradePriceDistort;
 ConVar g_cvUpgradePriceHealthBoost;
 ConVar g_cvUpgradePriceJumpBoost;
+ConVar g_cvUpgradePriceLongJump;
+ConVar g_cvUseSourceMenus;
 
 float g_fCommand_Duration[] = 
 {
@@ -70,10 +74,10 @@ float g_fHealthModifier;
 float g_fJumpBoost;
 float g_fPushForce;
 
-Handle g_hAdvertisments;
+Handle g_hAdvertisements;
 Handle g_hStatHud[MAXPLAYERS + 1];
 
-int g_iAdvertisment = 1;
+int g_iAdvertisement = 1;
 int g_iAllDeaths[MAXPLAYERS + 1];
 int g_iAllKills[MAXPLAYERS + 1];
 int g_iClip_Sizes[] = 
@@ -96,12 +100,16 @@ int g_iCrowbarDamage;
 int g_iDeaths[MAXPLAYERS + 1];
 int g_iHealthBoost;
 int g_iKills[MAXPLAYERS + 1];
+int g_iLastButton[MAXPLAYERS + 1];
 int g_iUpgrade_Prices[] = 
 {
 	125, //Distort
 	500, //Health Boost
 	200, //Jump Boost
+	2500, //Long Jump
 };
+
+KeyValues g_kvAdvertisements;
 
 //Plugin Information
 public Plugin myinfo = 
@@ -125,13 +133,59 @@ public void OnLibraryAdded(const char[] sName)
 //Plugin Voids
 public void OnPluginStart()
 {
-	for (int i = 1; i < MaxClients; i++)
-	{
-		if (IsClientAuthorized(i))
-		{
-			OnClientPutInServer(i);
-		}
-	}
+	CreateConVar("kings-deathmatch", "1", "Notifies the server that the plugin is running.");
+	g_cvAllowPrivateMatches = CreateConVar("kdm_allow_private_matches", "1", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvCrowbarDamage = CreateConVar("kdm_crowbar_damage", "500", "Will be added later.");
+	g_cvDisableAdvertisements = CreateConVar("kdm_disable_advertisements", "0", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvHealthBoost = CreateConVar("kdm_credits_healthboost", "75", "Will be added later.");
+	g_cvHealthModifier = CreateConVar("kdm_health_modifier", "0.5", "Will be added later.");
+	g_cvJumpBoost = CreateConVar("kdm_credits_jumpboost", "500.0", "Will be added later.");
+	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "500.0", "Will be added later.");
+	g_cvNoFallDamage = CreateConVar("kdm_no_fall_damage", "1", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvPassword = FindConVar("sv_password");
+	g_cvShowAllKills = CreateConVar("kdm_hud_showallkills", "1", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvSpawnRPG = CreateConVar("kdm_allow_rpg", "0", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvUpgradePriceDistort = CreateConVar("kdm_credits_distort_price", "125", "Will be added later.");
+	g_cvUpgradePriceHealthBoost = CreateConVar("kdm_credits_healthboost_price", "350", "Will be added later.");
+	g_cvUpgradePriceJumpBoost = CreateConVar("kdm_credits_jumpboost_price", "175", "Will be added later.");
+	g_cvUpgradePriceLongJump = CreateConVar("kdm_credits_longjump_price", "2500", "Will be added later.");
+	g_cvUseSourceMenus = CreateConVar("kdm_use_source_menus", "0", "Will be added later.", _, true, 0.1, true, 1.0);
+
+	CreateConVar("kdm_version", PLUGIN_VERSION, "The version of the plugin the server is running.");
+
+	g_bAllKills = g_cvShowAllKills.BoolValue;
+	g_iCrowbarDamage = g_cvCrowbarDamage.IntValue;
+	g_iHealthBoost = g_cvHealthBoost.IntValue;
+	g_fHealthModifier = g_cvHealthModifier.FloatValue;
+	g_fJumpBoost = g_cvJumpBoost.FloatValue;
+	g_fPushForce = g_cvLongJumpPush.FloatValue;
+	g_bMenu = g_cvUseSourceMenus.BoolValue;
+	g_bNoAdvertisements = g_cvDisableAdvertisements.BoolValue;
+	g_bNoFallDamage = g_cvNoFallDamage.BoolValue;
+	g_cvPassword.SetString("");
+	g_bPrivateMatches = g_cvAllowPrivateMatches.BoolValue;
+	g_bRPG = g_cvSpawnRPG.BoolValue;
+
+	g_iUpgrade_Prices[0] = g_cvUpgradePriceDistort.IntValue;
+	g_iUpgrade_Prices[1] = g_cvUpgradePriceHealthBoost.IntValue;
+	g_iUpgrade_Prices[2] = g_cvUpgradePriceJumpBoost.IntValue;
+	g_iUpgrade_Prices[3] = g_cvUpgradePriceLongJump.IntValue;
+
+	g_cvAllowPrivateMatches.AddChangeHook(OnConVarsChanged);
+	g_cvCrowbarDamage.AddChangeHook(OnConVarsChanged);
+	g_cvDisableAdvertisements.AddChangeHook(OnConVarsChanged);
+	g_cvHealthBoost.AddChangeHook(OnConVarsChanged);
+	g_cvHealthModifier.AddChangeHook(OnConVarsChanged);
+	g_cvJumpBoost.AddChangeHook(OnConVarsChanged);
+	g_cvLongJumpPush.AddChangeHook(OnConVarsChanged);
+	g_cvNoFallDamage.AddChangeHook(OnConVarsChanged);
+	g_cvShowAllKills.AddChangeHook(OnConVarsChanged);
+	g_cvSpawnRPG.AddChangeHook(OnConVarsChanged);
+	g_cvUpgradePriceDistort.AddChangeHook(OnConVarsChanged);
+	g_cvUpgradePriceHealthBoost.AddChangeHook(OnConVarsChanged);
+	g_cvUpgradePriceJumpBoost.AddChangeHook(OnConVarsChanged);
+	g_cvUpgradePriceLongJump.AddChangeHook(OnConVarsChanged);
+	g_cvUseSourceMenus.AddChangeHook(OnConVarsChanged);
 
 	AutoExecConfig(true, "kings-deathmatch");
 
@@ -143,63 +197,36 @@ public void OnPluginStart()
 		CreateDirectory(sPath, 511);
 	}
 
+	BuildPath(Path_SM, g_sAdvertisementsDatabase, PLATFORM_MAX_PATH, "data/kingsdeathmatch/advertisements.txt");
+	if(!FileExists(g_sAdvertisementsDatabase))
+	{
+		g_bNoAdvertisements = false;
+	}
+
 	BuildPath(Path_SM, g_sClientsDatabase, PLATFORM_MAX_PATH, "data/kingsdeathmatch/clients.txt");
-
-	CreateConVar("kings-deathmatch", "1", "Notifies the server that the plugin is running.");
-	g_cvAllowPrivateMatches = CreateConVar("kdm_allow_private_matches", "1", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvCrowbarDamage = CreateConVar("kdm_crowbar_damage", "250", "Will be added later.");
-	g_cvDefault357 = CreateConVar("kdm_default_weapon_357", "1", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvHealthBoost = CreateConVar("kdm_credits_healthboost", "75", "Will be added later.");
-	g_cvHealthModifier = CreateConVar("kdm_health_modifier", "0.5", "Will be added later.");
-	g_cvJumpBoost = CreateConVar("kdm_credits_jumpboost", "500.0", "Will be added later.");
-	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "500.0", "Will be added later.");
-	g_cvNoFallDamage = CreateConVar("kdm_npfalldamage", "1", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvPassword = FindConVar("sv_password");
-	g_cvShowAllKills = CreateConVar("kdm_hud_showallkills", "1", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvSpawnRPG = CreateConVar("kdm_allow_rpg", "0", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvUpgradePriceDistort = CreateConVar("kdm_credits_distort_price", "125", "Will be added later.");
-	g_cvUpgradePriceHealthBoost = CreateConVar("kdm_credits_healthboost_price", "350", "Will be added later.");
-	g_cvUpgradePriceJumpBoost = CreateConVar("kdm_credits_jumpboost_price", "175", "Will be added later.");
-	CreateConVar("kdm_version", PLUGIN_VERSION, "The version of the plugin the server is running.");
-
-	g_bAllKills = g_cvShowAllKills.BoolValue;
-	g_iCrowbarDamage = g_cvCrowbarDamage.IntValue;
-	g_bDefault357 = g_cvDefault357.BoolValue;
-	g_iHealthBoost = g_cvHealthBoost.IntValue;
-	g_fHealthModifier = g_cvHealthModifier.FloatValue;
-	g_fJumpBoost = g_cvJumpBoost.FloatValue;
-	g_fPushForce = g_cvLongJumpPush.FloatValue;
-	g_bNoFallDamage = g_cvNoFallDamage.BoolValue;
-	g_bPrivateMatches = g_cvAllowPrivateMatches.BoolValue;
-	g_bRPG = g_cvSpawnRPG.BoolValue;
-
-	g_iUpgrade_Prices[0] = g_cvUpgradePriceDistort.IntValue;
-	g_iUpgrade_Prices[1] = g_cvUpgradePriceHealthBoost.IntValue;
-	g_iUpgrade_Prices[2] = g_cvUpgradePriceJumpBoost.IntValue;
-
-	g_cvAllowPrivateMatches.AddChangeHook(OnConVarsChanged);
-	g_cvCrowbarDamage.AddChangeHook(OnConVarsChanged);
-	g_cvDefault357.AddChangeHook(OnConVarsChanged);
-	g_cvHealthBoost.AddChangeHook(OnConVarsChanged);
-	g_cvHealthModifier.AddChangeHook(OnConVarsChanged);
-	g_cvJumpBoost.AddChangeHook(OnConVarsChanged);
-	g_cvLongJumpPush.AddChangeHook(OnConVarsChanged);
-	g_cvNoFallDamage.AddChangeHook(OnConVarsChanged);
-	g_cvShowAllKills.AddChangeHook(OnConVarsChanged);
-	g_cvSpawnRPG.AddChangeHook(OnConVarsChanged);
-	g_cvUpgradePriceDistort.AddChangeHook(OnConVarsChanged);
-	g_cvUpgradePriceHealthBoost.AddChangeHook(OnConVarsChanged);
-	g_cvUpgradePriceJumpBoost.AddChangeHook(OnConVarsChanged);
 
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_spawn", Event_PlayerSpawn);
+
+	AddCommandListener(Handle_Chat, "say");
+	AddCommandListener(Handle_Chat, "say_team");
 	
-	RegConsoleCmd("sm_boost", Command_JumpBoost, "Gives you a big jump boost.");
+	RegConsoleCmd("sm_boost", Command_HealthBoost, "Adds a boost of health.");
 	RegConsoleCmd("sm_credits", Command_Credits, "Brings up the credit menu.");
+	RegConsoleCmd("sm_defaultweapon", Command_DefaultWeapon, "Changes the default weapon.");
 	RegConsoleCmd("sm_distort", Command_Distort, "Distorts your player model.");
-	RegConsoleCmd("sm_healthboost", Command_HealthBoost, "Adds a small boost of health.");
+	RegConsoleCmd("sm_healthboost", Command_HealthBoost, "Adds a boost of health.");
+	RegConsoleCmd("sm_jumpboost", Command_JumpBoost, "Gives you a big jump boost.");
+	RegConsoleCmd("sm_longjump", Command_LongJump, "Gives you the long jump module.");
 	RegConsoleCmd("sm_privatematch", Command_PrivateMatch, "Sets the match to private with a password.");
-	RegConsoleCmd("sm_shittylongjump", Command_ShittyLongJump);
+
+	for (int i = 1; i < MaxClients; i++)
+	{
+		if (IsClientAuthorized(i))
+		{
+			OnClientPutInServer(i);
+		}
+	}
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -213,10 +240,26 @@ public void OnPluginStart()
 	{
 		Updater_AddPlugin(UPDATE_URL);
 	}
+
+	g_kvAdvertisements = new KeyValues("Advertisements");
+	
+	g_kvAdvertisements.ImportFromFile(g_sAdvertisementsDatabase);
+
+	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_boost1.wav");
+	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_boost2.wav");
+	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_long1.wav");
 }
 
 public void OnPluginEnd()
 {
+	for (int i = 1; i < MaxClients; i++)
+	{
+		if (IsClientAuthorized(i))
+		{
+			OnClientDisconnect(i);
+		}
+	}
+
 	for (int i = 1; i <= MaxClients; i++)
 	{
 		if (IsClientConnected(i))
@@ -224,26 +267,30 @@ public void OnPluginEnd()
 			SDKUnhook(i, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
 		}
 	}
+
+	g_cvPassword.SetString("");
+
+	g_kvAdvertisements.Close();
 }
 
 public void OnMapStart()
 {
 	char sClassname[64];
 	
-	for (int i = 0; i < GetMaxEntities(); i++)
+	for (int i = 0; i < GetMaxEntities() * 2; i++)
 	{
 		if (IsValidEntity(i))
 		{
 			GetEntityClassname(i, sClassname, sizeof(sClassname));
 			
-			if (StrEqual(sClassname, "weapon_rpg") || StrEqual(sClassname, "item_rpg_round") && g_bRPG)
+			if ((StrEqual(sClassname, "weapon_rpg") || StrEqual(sClassname, "item_rpg_round")) && !g_bRPG)
 			{
 				AcceptEntityInput(i, "kill");
 			}
 		}
 	}
 	
-	g_hAdvertisments = CreateTimer(45.0, Timer_Advertisment, _, TIMER_REPEAT);
+	g_hAdvertisements = CreateTimer(45.0, Timer_Advertisement, _, TIMER_REPEAT);
 	
 	CreateTimer(60.0, Timer_RPGRemove, _, TIMER_REPEAT);
 	
@@ -252,7 +299,7 @@ public void OnMapStart()
 
 public void OnMapEnd()
 {
-	CloseHandle(g_hAdvertisments);
+	CloseHandle(g_hAdvertisements);
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -269,8 +316,11 @@ public void OnClientPutInServer(int iClient)
 {
 	char sIP[32], sCountry[4], sName[64];
 	
+	g_bDistort[iClient] = false;
 	g_bJumpBoost[iClient] = false;
-	g_bJumpPressed[iClient] = false;
+	g_bLongJumpPressed[iClient] = false;
+	g_bLongJump[iClient][0] = false;
+	g_bLongJump[iClient][1] = false;
 	g_bPlayer[iClient] = true;
 	g_bPreferPrivateMatches[iClient] = false;
 	
@@ -296,22 +346,22 @@ public void OnClientPutInServer(int iClient)
 	SDKHookEx(iClient, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
 	
 	LoadClient(iClient);
-	SaveClient(iClient);
 }
 
 public void OnClientDisconnect(int iClient)
 {
+	g_bDistort[iClient] = false;
 	g_bJumpBoost[iClient] = false;
-	g_bJumpPressed[iClient] = false;
+	g_bLongJumpPressed[iClient] = false;
+	g_bLongJump[iClient][1] = false;
 	g_bPlayer[iClient] = false;
+	g_bPreferPrivateMatches[iClient] = false;
 	
 	SDKUnhook(iClient, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
 	
 	CloseHandle(g_hStatHud[iClient]);
 	
 	SaveClient(iClient);
-
-	g_bPreferPrivateMatches[iClient] = false;
 
 	g_iAllDeaths[iClient] = 0;
 	g_iAllKills[iClient] = 0;
@@ -324,11 +374,12 @@ public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 {
 	g_bAllKills = g_cvShowAllKills.BoolValue;
 	g_iCrowbarDamage = g_cvCrowbarDamage.IntValue;
-	g_bDefault357 = g_cvDefault357.BoolValue;
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
 	g_fHealthModifier = g_cvHealthModifier.FloatValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
 	g_fPushForce = g_cvLongJumpPush.FloatValue;
+	g_bMenu = g_cvUseSourceMenus.BoolValue;
+	g_bNoAdvertisements = g_cvDisableAdvertisements.BoolValue;
 	g_bNoFallDamage = g_cvNoFallDamage.BoolValue;
 	g_bPrivateMatches = g_cvAllowPrivateMatches.BoolValue;
 	g_bRPG = g_cvSpawnRPG.BoolValue;
@@ -336,6 +387,7 @@ public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 	g_iUpgrade_Prices[0] = g_cvUpgradePriceDistort.IntValue;
 	g_iUpgrade_Prices[1] = g_cvUpgradePriceHealthBoost.IntValue;
 	g_iUpgrade_Prices[2] = g_cvUpgradePriceJumpBoost.IntValue;
+	g_iUpgrade_Prices[3] = g_cvUpgradePriceLongJump.IntValue;
 }
 
 public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fVel[3], float fAngles[3], int &iWeapon, int &iSubtype, int &iCmdnum, int &iTickcount, int &iSeed, int iMouse[2])
@@ -343,18 +395,38 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 	int iFlags = GetEntityFlags(iClient);
 	float fVelocity[3];
 	
-	if (iButtons & IN_JUMP && iFlags & FL_ONGROUND)
+	if ((iButtons & IN_JUMP) && (iFlags & FL_ONGROUND))
 	{
 		GetEntPropVector(iClient, Prop_Data, "m_vecVelocity", fVelocity);
 		
-		fVelocity[2] = g_bJumpBoost[iClient] ? g_fJumpBoost : 100.0;
+		fVelocity[2] = g_bJumpBoost[iClient] ? g_fJumpBoost : 50.0;
 		TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fVelocity);
 	}
 
-	if (iButtons & IN_DUCK && iButtons & IN_JUMP && iFlags & FL_ONGROUND && g_bShittyLongJump)
+	for (int i = 0; i < MAX_BUTTONS; i++)
 	{
-		LongJumpFunction(iClient);
+		int iButton = (1 << i);
+		
+		if ((iButtons & iButton) && !(g_iLastButton[iClient] & iButton))
+		{
+			if((iButtons & IN_DUCK) && (iButton & IN_JUMP) && (iFlags & FL_ONGROUND) && !g_bLongJumpPressed[iClient] && g_bLongJump[iClient][1])
+			{
+				LongJumpFunction(iClient);
+				
+				g_bLongJumpPressed[iClient] = true;
+			}
+		}
+		
+		if ((g_iLastButton[iClient] & iButton) && !(iButtons & iButton))
+		{
+			if((iButton & IN_JUMP) && g_bLongJumpPressed[iClient])
+			{
+				g_bLongJumpPressed[iClient] = false;
+			}
+		}
 	}
+	
+	g_iLastButton[iClient] = iButtons;
 	
 	int iBitsActiveDevices = GetEntProp(iClient, Prop_Send, "m_bitsActiveDevices");
 	
@@ -371,65 +443,119 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 	}
 }
 
-/*
-public void OnButtonPressed(int iClient, int iButton)
-{
-	if(iButton == BD_DUCK)
-	{
-		if(iButton == BD_JUMP && !g_bJumpPressed[iClient])
-		{
-			LongJumpFunction(iClient);
-
-			g_bJumpPressed[iClient] = true;
-
-			PrintToChat(iClient, "Jump Was Pressed");
-		}
-	}
-	/*if (iButtons & IN_DUCK && iButtons & IN_JUMP && iFlags & FL_ONGROUND)
-	{
-		LongJumpFunction(iClient);
-	}
-}
-
-public void OnButtonReleased(int iClient, int iButton)
-{
-	if(iButton == ~BD_JUMP && g_bJumpPressed[iClient])
-	{
-		PrintToChat(iClient, "Jump Was Unpressed");
-
-		g_bJumpPressed[iClient] = false;
-	}
-}*/
-
 //Plugin Commands
-public Action Command_ShittyLongJump(int iClient, int iArgs)
-{
-	g_bShittyLongJump = !g_bShittyLongJump;
-
-	PrintToChatAll("Shitty long jump is %s.", g_bShittyLongJump ? "enabled" : "disabled");
-
-	return Plugin_Handled;
-}
 public Action Command_Credits(int iClient, int iArgs)
 {
 	char sDescription[128];
-	Menu hMenu = new Menu(Menu_Credits, MENU_ACTIONS_ALL);
-	
-	hMenu.SetTitle("Credit Menu (%i credits)", g_iCredits[iClient]);
-	
-	Format(sDescription, sizeof(sDescription), "Distort | %i Credits", g_iUpgrade_Prices[0]);
-	hMenu.AddItem("opt_distort", sDescription);
 
-	Format(sDescription, sizeof(sDescription), "Health Boost +%ihp | %i Credits", g_iHealthBoost, g_iUpgrade_Prices[1]);
-	hMenu.AddItem("opt_healthboost", sDescription);
+	if(g_bMenu)
+	{
+		Menu hMenu = new Menu(Menu_Credits, MENU_ACTIONS_ALL);
+	
+		hMenu.SetTitle("Credit Menu (%i credits)", g_iCredits[iClient]);
+		
+		Format(sDescription, sizeof(sDescription), "Distort | %i Credits", g_iUpgrade_Prices[0]);
+		hMenu.AddItem("opt_distort", sDescription);
 
-	Format(sDescription, sizeof(sDescription), "Jump Boost | %i Credits", g_iUpgrade_Prices[2]);
-	hMenu.AddItem("opt_boost", sDescription);
+		Format(sDescription, sizeof(sDescription), "Health Boost +%ihp | %i Credits", g_iHealthBoost, g_iUpgrade_Prices[1]);
+		hMenu.AddItem("opt_healthboost", sDescription);
+
+		Format(sDescription, sizeof(sDescription), "Jump Boost | %i Credits", g_iUpgrade_Prices[2]);
+		hMenu.AddItem("opt_boost", sDescription);
+		
+		hMenu.ExitButton = true;
+		
+		hMenu.Display(iClient, MENU_TIME_FOREVER);
+	}else{
+		CPrintToChat(iClient, "[{red}KINGS{default}] Credit Menu (%i credits)", g_iCredits[iClient]);
+
+		Format(sDescription, sizeof(sDescription), "Distort | %i Credits", g_iUpgrade_Prices[0]);
+		CPrintToChat(iClient, " - %s - Command: !%s", sDescription, "distort");
+
+		Format(sDescription, sizeof(sDescription), "Health Boost +%ihp | %i Credits", g_iHealthBoost, g_iUpgrade_Prices[1]);
+		CPrintToChat(iClient, " - %s - Command: !%s", sDescription, "boost");
+
+		Format(sDescription, sizeof(sDescription), "Jump Boost | %i Credits", g_iUpgrade_Prices[2]);
+		CPrintToChat(iClient, " - %s - Command: !%s", sDescription, "jumpboost");
+
+		Format(sDescription, sizeof(sDescription), "Long Jump | %i Credits", g_iUpgrade_Prices[3]);
+		CPrintToChat(iClient, " - %s - Command: !%s", sDescription, "longjump");
+	}
 	
-	hMenu.ExitButton = true;
-	
-	hMenu.Display(iClient, MENU_TIME_FOREVER);
-	
+	return Plugin_Handled;
+}
+
+public Action Command_DefaultWeapon(int iClient, int iArgs)
+{
+	char sWeapon[64];
+
+	GetCmdArg(1, sWeapon, sizeof(sWeapon));
+
+	if(StrContains(sWeapon, "1", false) != -1 || StrContains(sWeapon, "crowbar", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_crowbar");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}Crowbar{default}'.");
+	}else if(StrContains(sWeapon, "2", false) != -1 || StrContains(sWeapon, "stunstick", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_stunstick");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}Stunstick{default}'.");
+	}else if(StrContains(sWeapon, "3", false) != -1 || StrContains(sWeapon, "gravity gun", false) != -1 || StrContains(sWeapon, "physcannon", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_physcannon");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}Gravity Gun{default}'.");
+	}else if(StrContains(sWeapon, "4", false) != -1 || StrContains(sWeapon, "pistol", false) != -1 || StrContains(sWeapon, "9mm", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_pistol");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}9mm Pistol{default}'.");
+	}else if(StrContains(sWeapon, "5", false) != -1 || StrContains(sWeapon, "magnum", false) != -1 || StrContains(sWeapon, "357", false) != -1 || StrContains(sWeapon, "revolver", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_357");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}.357 Magnum{default}'.");
+	}else if(StrContains(sWeapon, "6", false) != -1 || StrContains(sWeapon, "smg", false) != -1 || StrContains(sWeapon, "smg1", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_smg1");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}SMG1{default}'.");
+	}else if(StrContains(sWeapon, "7", false) != -1 || StrContains(sWeapon, "ar2", false) != -1 || StrContains(sWeapon, "pulse", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_ar2");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}Pulse Rifle (AR2){default}'.");
+	}else if(StrContains(sWeapon, "8", false) != -1 || StrContains(sWeapon, "shotgun", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_shotgun");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}Shotgun{default}'.");
+	}else if(StrContains(sWeapon, "9", false) != -1 || StrContains(sWeapon, "crossbow", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_crossbow");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}Crossbow{default}'.");
+	}else if(StrContains(sWeapon, "10", false) != -1 || StrContains(sWeapon, "grenade", false) != -1 || StrContains(sWeapon, "frag", false) != -1)
+	{
+		Format(g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]), "weapon_frag");
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Changed default weapon to '{green}Frag Grenade{default}'.");
+	}else if(StrEqual(sWeapon, "", false))
+	{
+		Client_GetActiveWeaponName(iClient, g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]));
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Default weapon changed to your current weapon.");
+	}else{
+		Client_GetActiveWeaponName(iClient, g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]));
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Invalid weapon selection. Default weapon changed to your current weapon.");
+	}
+
+	SaveClient(iClient);
+
+	//Client_ChangeWeapon(iClient, g_sDefaultWeapon[iClient]);
+
 	return Plugin_Handled;
 }
 
@@ -437,13 +563,15 @@ public Action Command_Distort(int iClient, int iArgs)
 {
 	if (g_iCredits[iClient] <= g_iUpgrade_Prices[0])
 	{
-		CPrintToChat(iClient, "You do not have enough credits.");
+		CPrintToChat(iClient, "[{red}KINGS{default}] You do not have enough credits.");
 	} else {
 		g_iCredits[iClient] -= g_iUpgrade_Prices[0];
 
-		CPrintToChat(iClient, "You have bought {green}distort{default} for {green}%i{default} credits for {green}%f{default} seconds.", g_iUpgrade_Prices[0], g_fCommand_Duration[0]);
+		CPrintToChat(iClient, "[{red}KINGS{default}] You have bought the {green}distort effect{default} for {green}%i{default} credits for {green}%f{default} seconds.", g_iUpgrade_Prices[0], g_fCommand_Duration[0]);
 		
 		SetEntityRenderFx(iClient, RENDERFX_DISTORT);
+
+		g_bDistort[iClient] = true;
 		
 		CreateTimer(g_fCommand_Duration[0], Timer_Visible, iClient);
 		
@@ -457,11 +585,11 @@ public Action Command_HealthBoost(int iClient, int iArgs)
 {
 	if (g_iCredits[iClient] <= g_iUpgrade_Prices[1])
 	{
-		CPrintToChat(iClient, "You do not have enough credits.");
+		CPrintToChat(iClient, "[{red}KINGS{default}] You do not have enough credits.");
 	} else {
 		g_iCredits[iClient] -= g_iUpgrade_Prices[1];
 		
-		CPrintToChat(iClient, "You have bought {green}health boost{default} for {green}%i{default} credits. {green}%ihp{default} has been added to your health.", g_iUpgrade_Prices[1], g_iHealthBoost);
+		CPrintToChat(iClient, "[{red}KINGS{default}] You have bought the {green}health boost{default} for {green}%i{default} credits. {green}%ihp{default} has been added to your health.", g_iUpgrade_Prices[1], g_iHealthBoost);
 		
 		int iNewHealth = (GetClientHealth(iClient) + g_iHealthBoost);
 		
@@ -477,11 +605,11 @@ public Action Command_JumpBoost(int iClient, int iArgs)
 {
 	if (g_iCredits[iClient] <= g_iUpgrade_Prices[2])
 	{
-		CPrintToChat(iClient, "You do not have enough credits.");
+		CPrintToChat(iClient, "[{red}KINGS{default}] You do not have enough credits.");
 	} else {
 		g_iCredits[iClient] -= g_iUpgrade_Prices[2];
 
-		CPrintToChat(iClient, "You have bought {green}jump boost{default} for {green}%i{default} credits for {green}%f{default} seconds.", g_iUpgrade_Prices[2], g_fCommand_Duration[1]);
+		CPrintToChat(iClient, "[{red}KINGS{default}] You have bought the {green}jump boost{default} for {green}%i{default} credits for {green}%f{default} seconds.", g_iUpgrade_Prices[2], g_fCommand_Duration[1]);
 		
 		g_bJumpBoost[iClient] = true;
 		
@@ -493,11 +621,49 @@ public Action Command_JumpBoost(int iClient, int iArgs)
 	return Plugin_Handled;
 }
 
+public Action Command_LongJump(int iClient, int iArgs)
+{
+	if(g_bLongJump[iClient][0])
+	{
+		g_bLongJump[iClient][1] = !g_bLongJump[iClient][1];
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] Long jump has been %s.", g_bLongJump[iClient][1] ? "enabled" : "disabled");
+
+		return Plugin_Handled;
+	}
+
+	if (g_iCredits[iClient] <= g_iUpgrade_Prices[3])
+	{
+		CPrintToChat(iClient, "[{red}KINGS{default}] You do not have enough credits.");
+	} else {
+		g_iCredits[iClient] -= g_iUpgrade_Prices[3];
+
+		CPrintToChat(iClient, "[{red}KINGS{default}] You have bought the {green}long jump module{default} for {green}%i{default} credits.", g_iUpgrade_Prices[3]);
+		
+		g_bLongJump[iClient][0] = true;
+		g_bLongJump[iClient][1] = true;
+		
+		SaveClient(iClient);
+	}
+	
+	return Plugin_Handled;
+}
+
+public Action Handle_Chat(int iClient, char[] sCommand, int iArgs)
+{
+	if (IsChatTrigger())
+	{
+		return Plugin_Handled;
+	}
+	
+	return Plugin_Continue;
+}
+
 public Action Command_PrivateMatch(int iClient, int iArgs)
 {
 	if(!g_bPrivateMatches)
 	{
-		CPrintToChat(iClient, "Private matches are disabled.");
+		CPrintToChat(iClient, "[{red}KINGS{default}] Private matches are disabled.");
 		return Plugin_Handled;
 	}
 
@@ -547,27 +713,30 @@ public void LoadClient(int iClient)
 	kvVault.JumpToKey(sAuthID, false);
 	
 	g_iAllDeaths[iClient] = LoadInteger(kvVault, sAuthID, "all_deaths", 0);
-	
 	g_iAllKills[iClient] = LoadInteger(kvVault, sAuthID, "all_kills", 0);
-
 	g_iCredits[iClient] = LoadInteger(kvVault, sAuthID, "credits", 1500);
+
+	LoadString(kvVault, sAuthID, "default_weapon", "weapon_357", g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]));
+
+	g_bLongJump[iClient][0] = view_as<bool>(LoadInteger(kvVault, sAuthID, "long_jump", 0));
 	
 	kvVault.Rewind();
 	
 	kvVault.Close();
 }
 
-public void LoadString(KeyValues kvVault, const char[] sKey, const char[] sSaveKey, const char[] sDefaultValue, char sReference[256])
+public void LoadString(KeyValues kvVault, const char[] sKey, const char[] sSaveKey, const char[] sDefaultValue, char[] sReference, int iMaxLength)
 {
 	kvVault.JumpToKey(sKey, false);
 	
-	kvVault.GetString(sSaveKey, sReference, 256, sDefaultValue);
+	kvVault.GetString(sSaveKey, sReference, iMaxLength, sDefaultValue);
 
 	kvVault.Rewind();
 }
 
 public void LongJumpFunction(int iClient)
-{	
+{
+	char sSound[64];
 	float fEyeAngles[3], fPushForce[3];
 	
 	GetClientEyeAngles(iClient, fEyeAngles);
@@ -577,6 +746,12 @@ public void LongJumpFunction(int iClient)
 	fPushForce[2] = (-50.0 * Sine(DegToRad(fEyeAngles[0])));
 
 	TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fPushForce);
+
+	Format(sSound, sizeof(sSound), "bms/weapons/jumpmod/jumpmod_boost%i.wav", GetRandomInt(0, 1));
+
+	PrecacheSound(sSound);
+
+	EmitSoundToClient(iClient, sSound, iClient, 2, 100, 0, 0.5, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
 }
 
 //SDKHooks
@@ -601,7 +776,7 @@ public Action Hook_OnTakeDamage(int iClient, int &iAttacker, int &iInflictor, fl
 	
 	if (StrEqual(sWeapon, "weapon_crowbar"))
 	{
-		iNewHealth += g_iCrowbarDamage;
+		iNewHealth -= g_iCrowbarDamage;
 	}
 	
 	SetEntityHealth(iClient, iNewHealth);
@@ -643,6 +818,10 @@ public void SaveClient(int iClient)
 	SaveInteger(kvVault, sAuthID, "all_deaths", g_iAllDeaths[iClient]);
 	SaveInteger(kvVault, sAuthID, "all_Kills", g_iAllKills[iClient]);
 	SaveInteger(kvVault, sAuthID, "credits", g_iCredits[iClient]);
+
+	SaveString(kvVault, sAuthID, "default_weapon", g_sDefaultWeapon[iClient]);
+
+	SaveInteger(kvVault, sAuthID, "long_jump", view_as<int>(g_bLongJump[iClient][0]));
 	
 	kvVault.ExportToFile(g_sClientsDatabase);
 	
@@ -691,7 +870,6 @@ public Action Hook_WeaponCanSwitchTo(int iClient, int iWeapon)
 {
 	SetEntityFlags(iClient, GetEntityFlags(iClient) | FL_ONGROUND);
 }
-
 
 //Plugin Menus
 public int Menu_Credits(Menu hMenu, MenuAction iAction, int iParam1, int iParam2)
@@ -791,38 +969,69 @@ public Action Event_PlayerSpawn(Handle hEvent, char[] sName, bool bDontBroadcast
 	int iClient = GetClientOfUserId(GetEventInt(hEvent, "userid"));
 	
 	CreateTimer(0.1, Timer_Guns, iClient);
+
+	if(g_bDistort[iClient])
+		SetEntityRenderFx(iClient, RENDERFX_DISTORT);
 }
 
 //Plugin Timers
-public Action Timer_Advertisment(Handle hTimer)
+public Action Timer_Advertisement(Handle hTimer)
 {
-	char sAdvertisment[256];
+	char sAdvertisement[256];
 	
-	switch (g_iAdvertisment)
+	switch (g_iAdvertisement)
 	{
 		case 1:
 		{
-			Format(sAdvertisment, sizeof(sAdvertisment), "We have a {green}credits{default} system. Type {green}!credits{default} to use it.");
+			//Format(sAdvertisement, sizeof(sAdvertisement), "We have a {green}credits{default} system. Type {green}!credits{default} to use it.");
+			LoadString(g_kvAdvertisements, "Messages", "1", "", sAdvertisement, sizeof(sAdvertisement));
 			
-			g_iAdvertisment = 2;
+			g_iAdvertisement = 2;
 		}
 		
 		case 2:
 		{
-			Format(sAdvertisment, sizeof(sAdvertisment), "Latest Update [{green}10/23/18{default}]: We have added a buyable {green}health boost{default}. Type {green}!credits{default} for more information.");
+			//Format(sAdvertisement, sizeof(sAdvertisement), "Latest Update [{green}10/23/18{default}]: We have added a buyable {green}health boost{default}. Type {green}!credits{default} for more information.");
+			LoadString(g_kvAdvertisements, "Messages", "2", "", sAdvertisement, sizeof(sAdvertisement));
 			
-			g_iAdvertisment = 3;
+			g_iAdvertisement = 3;
 		}
 		
 		case 3:
 		{
-			Format(sAdvertisment, sizeof(sAdvertisment), "Type {green}rtv{default} to vote to change the map.");
+			//Format(sAdvertisement, sizeof(sAdvertisement), "Type {green}rtv{default} to vote to change the map.");
+			LoadString(g_kvAdvertisements, "Messages", "3", "", sAdvertisement, sizeof(sAdvertisement));
 			
-			g_iAdvertisment = 1;
+			g_iAdvertisement = 4;
+		}
+
+		case 4:
+		{
+			//Format(sAdvertisement, sizeof(sAdvertisement), "Type {green}rtv{default} to vote to change the map.");
+			LoadString(g_kvAdvertisements, "Messages", "4", "", sAdvertisement, sizeof(sAdvertisement));
+			
+			g_iAdvertisement = 5;
+		}
+
+		case 5:
+		{
+			//Format(sAdvertisement, sizeof(sAdvertisement), "Type {green}rtv{default} to vote to change the map.");
+			LoadString(g_kvAdvertisements, "Messages", "5", "", sAdvertisement, sizeof(sAdvertisement));
+			
+			g_iAdvertisement = 6;
+		}
+
+		case 6:
+		{
+			//Format(sAdvertisement, sizeof(sAdvertisement), "Type {green}rtv{default} to vote to change the map.");
+			LoadString(g_kvAdvertisements, "Messages", "6", "", sAdvertisement, sizeof(sAdvertisement));
+			
+			g_iAdvertisement = 1;
 		}
 	}
 	
-	CPrintToChatAll(sAdvertisment);
+	if(!g_bNoAdvertisements)
+		CPrintToChatAll(sAdvertisement);
 }
 
 public Action Timer_Dissolve(Handle hTimer, any iClient)
@@ -863,8 +1072,7 @@ public Action Timer_Guns(Handle hTimer, any iClient)
 	GivePlayerItem(iClient, "weapon_ar2");
 	GivePlayerItem(iClient, "weapon_357");
 
-	if(g_bDefault357)
-		Client_ChangeWeapon(iClient, "weapon_357");
+	Client_ChangeWeapon(iClient, g_sDefaultWeapon[iClient]);
 }
 
 public Action Timer_JumpBoost(Handle hTimer, any iClient)
@@ -873,7 +1081,7 @@ public Action Timer_JumpBoost(Handle hTimer, any iClient)
 	{
 		g_bJumpBoost[iClient] = false;
 		
-		CPrintToChat(iClient, "Your {green}jump-boost{default} has worn off.");
+		CPrintToChat(iClient, "[{red}KINGS{default}] Your {green}jump-boost{default} has worn off.");
 	}
 }
 
@@ -912,13 +1120,13 @@ public Action Timer_RPGRemove(Handle hTimer)
 {
 	char sClassname[64];
 	
-	for (int i = 0; i < GetMaxEntities(); i++)
+	for (int i = 0; i < GetMaxEntities() * 2; i++)
 	{
 		if (IsValidEntity(i))
 		{
 			GetEntityClassname(i, sClassname, sizeof(sClassname));
 			
-			if (StrEqual(sClassname, "weapon_rpg") || StrEqual(sClassname, "item_rpg_round") && g_bRPG)
+			if ((StrEqual(sClassname, "weapon_rpg") || StrEqual(sClassname, "item_rpg_round")) && !g_bRPG)
 			{
 				AcceptEntityInput(i, "kill");
 			}
@@ -931,7 +1139,9 @@ public Action Timer_Visible(Handle hTimer, any iClient)
 	if (IsClientConnected(iClient))
 	{
 		SetEntityRenderFx(iClient, RENDERFX_NONE);
+
+		g_bDistort[iClient] = false;
 		
-		CPrintToChat(iClient, "Your {green}distort{default} has worn off.");
+		CPrintToChat(iClient, "[{red}KINGS{default}] Your {green}distort{default} has worn off.");
 	}
 } 

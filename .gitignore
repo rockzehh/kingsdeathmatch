@@ -209,3 +209,7 @@ addons/sourcemod/scripting/include/socket.inc
 addons/sourcemod/scripting/include/SteamWorks.inc
 addons/sourcemod/scripting/include/updater.inc
 cfg/server.cfg
+addons/sourcemod/data/kingsdeathmatch/clients.txt
+sound/bms/weapons/jumpmod/jumpmod_boost1.wav
+sound/bms/weapons/jumpmod/jumpmod_boost2.wav
+sound/bms/weapons/jumpmod/jumpmod_long1.wav
