@@ -32,8 +32,9 @@
 bool g_bAllKills;
 bool g_bDistort[MAXPLAYERS + 1];
 bool g_bJumpBoost[MAXPLAYERS + 1];
-bool g_bLongJumpPressed[MAXPLAYERS + 1];
 bool g_bLongJump[MAXPLAYERS + 1][2];
+bool g_bLongJumpPressed[MAXPLAYERS + 1];
+bool g_bLongJumpSound;
 bool g_bMenu;
 bool g_bNoAdvertisements;
 bool g_bNoFallDamage;
@@ -55,6 +56,7 @@ ConVar g_cvHealthBoost;
 ConVar g_cvHealthModifier;
 ConVar g_cvJumpBoost;
 ConVar g_cvLongJumpPush;
+ConVar g_cvLongJumpSound;
 ConVar g_cvNoFallDamage;
 ConVar g_cvPassword;
 ConVar g_cvShowAllKills;
@@ -141,6 +143,7 @@ public void OnPluginStart()
 	g_cvHealthModifier = CreateConVar("kdm_health_modifier", "0.5", "Will be added later.");
 	g_cvJumpBoost = CreateConVar("kdm_credits_jumpboost", "500.0", "Will be added later.");
 	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "500.0", "Will be added later.");
+	g_cvLongJumpSound = CreateConVar("kdm_longjump_play_sound", "1", "Will be added later.", _, true, 0.1, true, 1.0);
 	g_cvNoFallDamage = CreateConVar("kdm_no_fall_damage", "1", "Will be added later.", _, true, 0.1, true, 1.0);
 	g_cvPassword = FindConVar("sv_password");
 	g_cvShowAllKills = CreateConVar("kdm_hud_showallkills", "1", "Will be added later.", _, true, 0.1, true, 1.0);
@@ -158,6 +161,7 @@ public void OnPluginStart()
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
 	g_fHealthModifier = g_cvHealthModifier.FloatValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
+	g_bLongJumpSound = g_cvLongJumpSound.BoolValue;
 	g_fPushForce = g_cvLongJumpPush.FloatValue;
 	g_bMenu = g_cvUseSourceMenus.BoolValue;
 	g_bNoAdvertisements = g_cvDisableAdvertisements.BoolValue;
@@ -178,6 +182,7 @@ public void OnPluginStart()
 	g_cvHealthModifier.AddChangeHook(OnConVarsChanged);
 	g_cvJumpBoost.AddChangeHook(OnConVarsChanged);
 	g_cvLongJumpPush.AddChangeHook(OnConVarsChanged);
+	g_cvLongJumpSound.AddChangeHook(OnConVarsChanged);
 	g_cvNoFallDamage.AddChangeHook(OnConVarsChanged);
 	g_cvShowAllKills.AddChangeHook(OnConVarsChanged);
 	g_cvSpawnRPG.AddChangeHook(OnConVarsChanged);
@@ -215,10 +220,17 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_credits", Command_Credits, "Brings up the credit menu.");
 	RegConsoleCmd("sm_defaultweapon", Command_DefaultWeapon, "Changes the default weapon.");
 	RegConsoleCmd("sm_distort", Command_Distort, "Distorts your player model.");
+	RegConsoleCmd("sm_hb", Command_HealthBoost, "Adds a boost of health.");
+	RegConsoleCmd("sm_health", Command_HealthBoost, "Adds a boost of health.");
 	RegConsoleCmd("sm_healthboost", Command_HealthBoost, "Adds a boost of health.");
+	RegConsoleCmd("sm_jb", Command_JumpBoost, "Gives you a big jump boost.");
+	RegConsoleCmd("sm_jump", Command_JumpBoost, "Gives you a big jump boost.");
 	RegConsoleCmd("sm_jumpboost", Command_JumpBoost, "Gives you a big jump boost.");
+	RegConsoleCmd("sm_lj", Command_LongJump, "Gives you the long jump module.");
 	RegConsoleCmd("sm_longjump", Command_LongJump, "Gives you the long jump module.");
+	RegConsoleCmd("sm_private", Command_PrivateMatch, "Sets the match to private with a password.");
 	RegConsoleCmd("sm_privatematch", Command_PrivateMatch, "Sets the match to private with a password.");
+	RegConsoleCmd("sm_store", Command_Credits, "Brings up the credit menu.");
 
 	for (int i = 1; i < MaxClients; i++)
 	{
@@ -245,9 +257,8 @@ public void OnPluginStart()
 	
 	g_kvAdvertisements.ImportFromFile(g_sAdvertisementsDatabase);
 
-	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_boost1.wav");
-	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_boost2.wav");
-	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_long1.wav");
+	//Sound from Black Mesa: Source (2012 Mod)
+	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_long1.mp3");
 }
 
 public void OnPluginEnd()
@@ -377,6 +388,7 @@ public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
 	g_fHealthModifier = g_cvHealthModifier.FloatValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
+	g_bLongJumpSound = g_cvLongJumpSound.BoolValue;
 	g_fPushForce = g_cvLongJumpPush.FloatValue;
 	g_bMenu = g_cvUseSourceMenus.BoolValue;
 	g_bNoAdvertisements = g_cvDisableAdvertisements.BoolValue;
@@ -719,6 +731,7 @@ public void LoadClient(int iClient)
 	LoadString(kvVault, sAuthID, "default_weapon", "weapon_357", g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon[]));
 
 	g_bLongJump[iClient][0] = view_as<bool>(LoadInteger(kvVault, sAuthID, "long_jump", 0));
+	g_bLongJump[iClient][1] = view_as<bool>(LoadInteger(kvVault, sAuthID, "previous_lj_setting", 0));
 	
 	kvVault.Rewind();
 	
@@ -747,11 +760,13 @@ public void LongJumpFunction(int iClient)
 
 	TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fPushForce);
 
-	Format(sSound, sizeof(sSound), "bms/weapons/jumpmod/jumpmod_boost%i.wav", GetRandomInt(0, 1));
+	//Sound from Black Mesa: Source (2012 Mod)
+	Format(sSound, sizeof(sSound), "bms/weapons/jumpmod/jumpmod_long1.mp3"/*, view_as<bool>(GetRandomInt(0, 1)) ? "long" : "boost"*/);
 
 	PrecacheSound(sSound);
 
-	EmitSoundToClient(iClient, sSound, iClient, 2, 100, 0, 0.5, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
+	if(g_bLongJumpSound)
+		EmitSoundToClient(iClient, sSound, iClient, 2, 100, 0, 0.1, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
 }
 
 //SDKHooks
@@ -822,6 +837,7 @@ public void SaveClient(int iClient)
 	SaveString(kvVault, sAuthID, "default_weapon", g_sDefaultWeapon[iClient]);
 
 	SaveInteger(kvVault, sAuthID, "long_jump", view_as<int>(g_bLongJump[iClient][0]));
+	SaveInteger(kvVault, sAuthID, "previous_lj_setting", view_as<int>(g_bLongJump[iClient][1]));
 	
 	kvVault.ExportToFile(g_sClientsDatabase);
 	

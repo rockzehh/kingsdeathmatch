@@ -17,13 +17,13 @@ Extract the zip file into your server directory with [SourceMod](https://www.sou
 ## Commands
 Command | Description | Type | Extra
 --- | --- | --- | ---
-sm_boost, sm_healthboost|Adds a boost of health.|Client|
-sm_credits|Brings up the credit menu.|Client|
+sm_boost, sm_hb, sm_health, sm_healthboost|Adds a boost of health.|Client|
+sm_credits, sm_store|Brings up the credit menu.|Client|
 sm_defaultweapon|Changes the default weapon.|Client|
 sm_distort|Distorts your player model.|Client|
-sm_jumpboost|Gives you a big jump boost.|Client|
-sm_longjump|Gives you the long jump module.|Client|
-sm_privatematch|Sets the match to private with a password.|Client|
+sm_jb, sm_jump, sm_jumpboost|Gives you a big jump boost.|Client|
+sm_lj, sm_longjump|Gives you the long jump module.|Client|
+sm_private, sm_privatematch|Sets the match to private with a password.|Client|
 
 ## Additional Information
 This plugin is designed with Half-Life 2: Deathmatch in mind. This may work on other source games, but it is not officially tested.
