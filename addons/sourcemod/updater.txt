@@ -4,11 +4,11 @@
 	{
 		"Version"
 		{
-			"Latest"	"1.2.1"
-			"Previous"	"1.2.0"
+			"Latest"	"1.3.0-b1"
+			"Previous"	"1.2.1"
 		}
 		
-		"Notes"	"Adding the long jump module."
+		"Notes"	"Made Jump Boost a lifetime purchase."
 	}
 	
 	"Files"
