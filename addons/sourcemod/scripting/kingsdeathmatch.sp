@@ -5,7 +5,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "RockZehh"
-#define PLUGIN_VERSION "1.3.0-b1"
+#define PLUGIN_VERSION "1.3.0-b2"
 
 #define MAX_BUTTONS 26
 
@@ -73,7 +73,7 @@ float g_fCommand_Duration[] =
 	60.0, //Distort
 	120.0, //Jump Boost
 };
-float g_fHealthModifier;
+float g_fDamageModifier;
 float g_fJumpBoost;
 float g_fPushForce;
 float g_fStandardJumpVel;
@@ -139,31 +139,31 @@ public void OnPluginStart()
 {
 	CreateConVar("kings-deathmatch", "1", "Notifies the server that the plugin is running.");
 
-	g_cvAllowPrivateMatches = CreateConVar("kdm_allow_private_matches", "1", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvCrowbarDamage = CreateConVar("kdm_crowbar_damage", "500", "Will be added later.");
-	g_cvDefaultJumpVelocity = CreateConVar("kdm_default_jump_velocity", "100.0", "Will be added later.");
-	g_cvDisableAdvertisements = CreateConVar("kdm_disable_advertisements", "0", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvHealthBoost = CreateConVar("kdm_credits_healthboost", "75", "Will be added later.");
-	g_cvHealthModifier = CreateConVar("kdm_health_modifier", "0.5", "Will be added later.");
-	g_cvJumpBoost = CreateConVar("kdm_credits_jumpboost", "500.0", "Will be added later.");
-	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "500.0", "Will be added later.");
-	g_cvLongJumpSound = CreateConVar("kdm_longjump_play_sound", "1", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvNoFallDamage = CreateConVar("kdm_no_fall_damage", "1", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvAllowPrivateMatches = CreateConVar("kdm_server_allow_private_matches", "1", "If users can start a private match.", _, true, 0.1, true, 1.0);
+	g_cvCrowbarDamage = CreateConVar("kdm_wep_crowbar_damage", "500", "The damage the crowbar will do.");
+	g_cvDefaultJumpVelocity = CreateConVar("kdm_player_jump_velocity", "100.0", "The default jump velocity.");
+	g_cvDisableAdvertisements = CreateConVar("kdm_chat_disable_advertisements", "0", "Decides if chat advertisements should be displayed.", _, true, 0.1, true, 1.0);
+	g_cvHealthBoost = CreateConVar("kdm_healthboost_amount", "75", "The amount of health the health boost will do.");
+	g_cvHealthModifier = CreateConVar("kdm_player_damage_modifier", "0.5", "Damage modifier. A better description will be added.");
+	g_cvJumpBoost = CreateConVar("kdm_jumpboost_amount", "500.0", "The added jump velocity.");
+	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "500.0", "The amount of force that the long jump does.");
+	g_cvLongJumpSound = CreateConVar("kdm_longjump_play_sound", "1", "Decides if to play the long jump sound.", _, true, 0.1, true, 1.0);
+	g_cvNoFallDamage = CreateConVar("kdm_player_nofalldamage", "1", "Decides if to disable fall damage.", _, true, 0.1, true, 1.0);
 	g_cvPassword = FindConVar("sv_password");
-	g_cvShowAllKills = CreateConVar("kdm_hud_showallkills", "1", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvSpawnRPG = CreateConVar("kdm_allow_rpg", "0", "Will be added later.", _, true, 0.1, true, 1.0);
-	g_cvUpgradePriceDistort = CreateConVar("kdm_credits_distort_price", "125", "Will be added later.");
-	g_cvUpgradePriceHealthBoost = CreateConVar("kdm_credits_healthboost_price", "350", "Will be added later.");
-	g_cvUpgradePriceJumpBoost = CreateConVar("kdm_credits_jumpboost_price", "1750", "Will be added later.");
-	g_cvUpgradePriceLongJump = CreateConVar("kdm_credits_longjump_price", "2500", "Will be added later.");
-	g_cvUseSourceMenus = CreateConVar("kdm_use_source_menus", "0", "Will be added later.", _, true, 0.1, true, 1.0);
+	g_cvShowAllKills = CreateConVar("kdm_player_hud_showallkills", "1", "Shows the stats for the players overall kills.", _, true, 0.1, true, 1.0);
+	g_cvSpawnRPG = CreateConVar("kdm_wep_allow_rpg", "0", "Decides if the RPG is allowed to spawn.", _, true, 0.1, true, 1.0);
+	g_cvUpgradePriceDistort = CreateConVar("kdm_distort_price", "125", "The amount of credits you need to pay to use the distort effect.");
+	g_cvUpgradePriceHealthBoost = CreateConVar("kdm_healthboost_price", "350", "The amount of credits you need to pay to use the health boost.");
+	g_cvUpgradePriceJumpBoost = CreateConVar("kdm_jumpboost_price", "1750", "The amount of credits you need to pay to use the jump boost module.");
+	g_cvUpgradePriceLongJump = CreateConVar("kdm_longjump_price", "2500", "The amount of credits you need to pay to use the long jump module.");
+	g_cvUseSourceMenus = CreateConVar("kdm_server_usesourcemenus", "0", "Decides to use the chat option or the menu system.", _, true, 0.1, true, 1.0);
 
-	CreateConVar("kdm_version", PLUGIN_VERSION, "The version of the plugin the server is running.");
+	CreateConVar("kdm_plugin_version", PLUGIN_VERSION, "The version of the plugin the server is running.");
 
 	g_bAllKills = g_cvShowAllKills.BoolValue;
 	g_iCrowbarDamage = g_cvCrowbarDamage.IntValue;
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
-	g_fHealthModifier = g_cvHealthModifier.FloatValue;
+	g_fDamageModifier = g_cvHealthModifier.FloatValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
 	g_bLongJumpSound = g_cvLongJumpSound.BoolValue;
 	g_fPushForce = g_cvLongJumpPush.FloatValue;
@@ -386,7 +386,7 @@ public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 	g_bAllKills = g_cvShowAllKills.BoolValue;
 	g_iCrowbarDamage = g_cvCrowbarDamage.IntValue;
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
-	g_fHealthModifier = g_cvHealthModifier.FloatValue;
+	g_fDamageModifier = g_cvHealthModifier.FloatValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
 	g_bLongJumpSound = g_cvLongJumpSound.BoolValue;
 	g_fPushForce = g_cvLongJumpPush.FloatValue;
@@ -424,7 +424,7 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 			{
 				GetEntPropVector(iClient, Prop_Data, "m_vecVelocity", fVelocity);
 				
-				fVelocity[2] = g_bJumpBoost[iClient][1] ? g_fJumpBoost : g_fStandardJumpVel;
+				fVelocity[2] += g_bJumpBoost[iClient][1] ? g_fJumpBoost : g_fStandardJumpVel;
 				TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fVelocity);
 
 				g_bLongJumpPressed[iClient] = true;
@@ -810,7 +810,7 @@ public Action Hook_OnTakeDamage(int iClient, int &iAttacker, int &iInflictor, fl
 		return Plugin_Handled;
 	}
 	
-	int iNewHealth = (GetClientHealth(iClient) - RoundFloat((fDamage * g_fHealthModifier)));
+	int iNewHealth = (GetClientHealth(iClient) - RoundFloat((fDamage * g_fDamageModifier)));
 	
 	if (StrEqual(sWeapon, "weapon_crowbar"))
 	{
@@ -1120,12 +1120,8 @@ public Action Timer_Guns(Handle hTimer, any iClient)
 
 	Client_ChangeWeapon(iClient, g_sDefaultWeapon[iClient]);
 
-	/*int iWeapon = GetEntPropEnt(iClient, Prop_Send, "m_hActiveWeapon");
-	
-	if (iWeapon != -1)
-	{
-		ReFillWeapon(iClient, iWeapon);
-	}*/
+	if(Client_GetActiveWeapon(iClient) != INVALID_ENT_REFERENCE)
+		ReFillWeapon(iClient, Client_GetActiveWeapon(iClient));
 }
 
 /*public Action Timer_JumpBoost(Handle hTimer, any iClient)

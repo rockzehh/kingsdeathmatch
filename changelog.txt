@@ -1,0 +1,59 @@
+King's Deathmatch - Changelog:
+
+v1.3.0:
+
+	1.3.0-b1:
+		Changed:
+			- Made Jump Boost a lifetime purchase like Long Jump.
+
+		Added:
+			+ Added sm_default as an alias for sm_defaultweapon.
+			+ Added a ConVar for the default jump velocity.
+
+v1.2.1:
+
+	Final:
+		Changed:
+			- Added ConVar to enable/disable the sound for the long jump module.
+			* Sound from Black Mesa: Source (2012 Mod).
+
+			- Fixed the audio issue with the long jump module.
+
+		Added:
+			+ Added setting to save your previous long jump setting.
+			- Added alt. commands for:
+			  - Credits/Store
+			  - Health Boost
+			  - Jump Boost
+			  - Long Jump
+			  - Private Match
+
+	Beta:
+		Changed:
+			- Fixed the crowbar adding health instead of taking away.
+			- Fixed distort effect not working on respawn.
+			- Made sure server passwords get reset the the start and end of rounds.
+			- Fixed RPGs not getting removed from the map.
+			- Changed health and jump boost commands and descriptions.
+			- Removed buttondetector.
+			- Moved around saving numbers.
+			- Fixed all deaths and kills not getting saved.
+			- Fixed the RPG not getting removed.
+
+		Added:
+			+ Added a command to choose the default weapon you spawn with.
+			+ Added a chat option for !credits due to the menus not working.
+			+ Added the long jump command and fixed the infinite sliding bug on the long jump function.
+			+ Added advertisements loading from a file instead of hardcoded.
+			+ Added Load/SaveString functions.
+			+ Fixed the T pose when falling.
+			+ Added the early long jump module.
+			+ Added the ability to make a private match.
+
+v1.2.0:
+
+	Changed:
+		- Updated name from Raging Scout to King's Deathmatch.
+
+	Added:
+		+ Added a bunch of ConVars to make the plugin more controllable.
