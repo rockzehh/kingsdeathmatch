@@ -5,7 +5,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "RockZehh"
-#define PLUGIN_VERSION "1.3.0-b2"
+#define PLUGIN_VERSION "1.3.0-b3"
 
 #define MAX_BUTTONS 26
 
@@ -1082,46 +1082,55 @@ public Action Timer_Advertisement(Handle hTimer)
 
 public Action Timer_Dissolve(Handle hTimer, any iClient)
 {
-	int iRagdoll = GetEntPropEnt(iClient, Prop_Send, "m_hRagdoll");
+	if(IsClientConnected(iClient))
+	{
+		int iRagdoll = GetEntPropEnt(iClient, Prop_Send, "m_hRagdoll");
 	
-	int iDissolver = CreateEntityByName("env_entity_dissolver");
-	
-	DispatchKeyValue(iRagdoll, "targetname", "dissolved");
-	
-	DispatchKeyValue(iDissolver, "dissolvetype", "3");
-	DispatchKeyValue(iDissolver, "target", "dissolved");
-	AcceptEntityInput(iDissolver, "Dissolve");
-	
-	AcceptEntityInput(iDissolver, "Kill");
+		int iDissolver = CreateEntityByName("env_entity_dissolver");
+		
+		DispatchKeyValue(iRagdoll, "targetname", "dissolved");
+		
+		DispatchKeyValue(iDissolver, "dissolvetype", "3");
+		DispatchKeyValue(iDissolver, "target", "dissolved");
+		AcceptEntityInput(iDissolver, "Dissolve");
+		
+		AcceptEntityInput(iDissolver, "Kill");
+	}
 }
 
 public Action Timer_Fire(Handle hTimer, any iClient)
 {
-	int iRagdoll = GetEntPropEnt(iClient, Prop_Send, "m_hRagdoll");
-	
-	IgniteEntity(iRagdoll, 5.0);
+	if(IsClientConnected(iClient))
+	{
+		int iRagdoll = GetEntPropEnt(iClient, Prop_Send, "m_hRagdoll");
+		
+		IgniteEntity(iRagdoll, 5.0);
+	}
 }
 
 public Action Timer_Guns(Handle hTimer, any iClient)
 {
-	GivePlayerItem(iClient, "weapon_crowbar");
-	if (g_bRPG)
-		GivePlayerItem(iClient, "weapon_rpg");
+	if(IsClientConnected(iClient))
+	{
+		GivePlayerItem(iClient, "weapon_crowbar");
+		if (g_bRPG)
+			GivePlayerItem(iClient, "weapon_rpg");
 
-	GivePlayerItem(iClient, "weapon_stunstick");
-	GivePlayerItem(iClient, "weapon_shotgun");
-	GivePlayerItem(iClient, "weapon_pistol");
-	GivePlayerItem(iClient, "weapon_physcannon");
-	GivePlayerItem(iClient, "weapon_smg1");
-	GivePlayerItem(iClient, "weapon_crossbow");
-	GivePlayerItem(iClient, "weapon_frag");
-	GivePlayerItem(iClient, "weapon_ar2");
-	GivePlayerItem(iClient, "weapon_357");
+		GivePlayerItem(iClient, "weapon_stunstick");
+		GivePlayerItem(iClient, "weapon_shotgun");
+		GivePlayerItem(iClient, "weapon_pistol");
+		GivePlayerItem(iClient, "weapon_physcannon");
+		GivePlayerItem(iClient, "weapon_smg1");
+		GivePlayerItem(iClient, "weapon_crossbow");
+		GivePlayerItem(iClient, "weapon_frag");
+		GivePlayerItem(iClient, "weapon_ar2");
+		GivePlayerItem(iClient, "weapon_357");
 
-	Client_ChangeWeapon(iClient, g_sDefaultWeapon[iClient]);
+		Client_ChangeWeapon(iClient, g_sDefaultWeapon[iClient]);
 
-	if(Client_GetActiveWeapon(iClient) != INVALID_ENT_REFERENCE)
-		ReFillWeapon(iClient, Client_GetActiveWeapon(iClient));
+		if(Client_GetActiveWeapon(iClient) != INVALID_ENT_REFERENCE)
+			ReFillWeapon(iClient, Client_GetActiveWeapon(iClient));
+	}
 }
 
 /*public Action Timer_JumpBoost(Handle hTimer, any iClient)
@@ -1155,6 +1164,7 @@ public Action Timer_StatHud(Handle hTimer, any iClient)
 		}else{
 			g_bPrivateMatchRunning ? Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\nServer Password: %s", iClient, g_iCredits[iClient], g_sServerPassword) : Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i", iClient, g_iCredits[iClient]);
 		}
+
 		Format(sStatsHud[1], sizeof(sStatsHud[]), "Stats:\n%i Kills\n%i Deaths\n%.1f Round KTD\nTimeleft: %d:%02d", g_iKills[iClient], g_iDeaths[iClient], fRoundKTD, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60));
 		
 		SetHudTextParams(0.010, 0.010, 0.5, 255, 128, 0, 128, 0, 0.1, 0.1, 0.1);
