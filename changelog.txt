@@ -1,6 +1,15 @@
 King's Deathmatch - Changelog:
 
 v1.3.0:
+	
+	1.30-b4
+		Added:
+	 		+ Added spawn protection until the player moves or fires.
+			+ Added a ConVar to enable/disable the T-Pose glitch. THIS BREAKS THE JUMPING SYSTEM.
+			+ Added a developer command for godmode.
+
+		Changed:
+			- Changed the distort effect to an invisibility effect.
 
 	1.3.0-b3
 		Changed:
