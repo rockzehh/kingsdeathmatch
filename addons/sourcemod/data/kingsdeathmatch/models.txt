@@ -1,0 +1,29 @@
+"PlayerModels"
+{
+	"Models"
+	{
+		//""						"models/.mdl"
+		"alyx"						"models/alyx.mdl"
+		"barney"					"models/barney.mdl"
+		"breen"						"models/breen.mdl"
+		"combinepolice"				"models/police.mdl"
+		"combinesoldier"			"models/combine_soldier.mdl"
+		"eli"						"models/eli.mdl"
+		"gman"						"models/gman.mdl"
+		//"gordon"					"models/.mdl"
+		"kleiner"					"models/kleiner.mdl"
+		"father"					"models/monk.mdl"
+		"mossman"					"models/mossman.mdl"
+		"odessa"					"models/odessa.mdl"
+		
+	}
+
+	//"AdminModels"
+	//{
+	//	"airboat"					"models/airboat.mdl"
+	//	"antlion"					"models/antlion.mdl"
+	//	"headcrab"					"models/headcrab.mdl"
+	//	"washingmachine"			"models/props_c17/furniturewashingmachine001a.mdl"
+	//	"vortigaunt"				"models/vortigaunt.mdl"
+	//}
+}
