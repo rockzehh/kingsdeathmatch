@@ -1,27 +1,37 @@
 //King's Deathmatch: Developed by King Nothing.
-
 #pragma semicolon 1
 
 #define DEBUG
 
 #define PLUGIN_AUTHOR "RockZehh"
-#define PLUGIN_VERSION "1.3.0-b5"
+#define PLUGIN_VERSION "1.4.0"
 
 #define MAX_BUTTONS 26
 
-#include <sourcemod>
-#include <morecolors>
-#include <sdktools>
-#include <sdkhooks>
-#include <smlib/clients>
-#include <geoip>
 #include <discord>
+#include <geoip>
+//#include <kingsdeathmatch>
+#include <morecolors>
+#include <sdkhooks>
+#include <sdktools>
+#include <sourcemod>
+#include <smlib/clients>
 #undef REQUIRE_PLUGIN
 #include <updater>
 
 #pragma newdecls required
 
 #define GRENADES 10
+
+#define HITGROUP_GENERIC   0
+#define HITGROUP_HEAD      1
+#define HITGROUP_CHEST     2
+#define HITGROUP_STOMACH   3
+#define HITGROUP_LEFTARM   4
+#define HITGROUP_RIGHTARM  5
+#define HITGROUP_LEFTLEG   6
+#define HITGROUP_RIGHTLEG  7
+
 #define RPG_ROUNDS 8
 
 #define SUIT_DEVICE_BREATHER	0x00000004
@@ -33,6 +43,7 @@
 bool g_bAllKills;
 bool g_bAltDamage;
 bool g_bColoredNickname[MAXPLAYERS + 1];
+bool g_bDev[MAXPLAYERS + 1];
 bool g_bEnableColorNickname;
 bool g_bEnableInvisibility;
 bool g_bEnableJetpack;
@@ -40,12 +51,11 @@ bool g_bEnableJumpBoost;
 bool g_bEnableLongJump;
 bool g_bEnableModelChanger;
 bool g_bEnableNickname;
-bool g_bDev[MAXPLAYERS + 1];
-bool g_bFallFix;
 bool g_bFOV;
+bool g_bFallFix;
 bool g_bGod[MAXPLAYERS + 1];
-bool g_bInvisibility[MAXPLAYERS + 1];
 bool g_bInZoom[MAXPLAYERS + 1];
+bool g_bInvisibility[MAXPLAYERS + 1];
 bool g_bJetpack[MAXPLAYERS + 1][2];
 bool g_bJumpBoost[MAXPLAYERS + 1][2];
 bool g_bLongJumpPressed[MAXPLAYERS + 1];
@@ -65,6 +75,7 @@ bool g_bZoom[MAXPLAYERS + 1];
 char g_sAdvertisementsDatabase[PLATFORM_MAX_PATH];
 char g_sClientsDatabase[PLATFORM_MAX_PATH];
 char g_sDefaultWeapon[MAXPLAYERS + 1][64];
+char g_sMap[128];
 char g_sModelsDatabase[PLATFORM_MAX_PATH];
 char g_sModelName[MAXPLAYERS + 1][64];
 char g_sNicknameColor[MAXPLAYERS + 1][MAX_NAME_LENGTH];
@@ -83,8 +94,8 @@ ConVar g_cvEnableLongJump;
 ConVar g_cvEnableModelChanger;
 ConVar g_cvEnableNickname;
 ConVar g_cvEnableSourceTVDemos;
-ConVar g_cvFallingFix;
 ConVar g_cvFOV;
+ConVar g_cvFallingFix;
 ConVar g_cvHalfDamage;
 ConVar g_cvHealthBoost;
 ConVar g_cvHealthModifier;
@@ -99,12 +110,12 @@ ConVar g_cvSourceTV[3];
 ConVar g_cvSpawnRPG;
 ConVar g_cvStartFOV;
 ConVar g_cvStartHealth;
+ConVar g_cvUpgradePriceColorNickname;
 ConVar g_cvUpgradePriceHealthBoost;
 ConVar g_cvUpgradePriceInvisibility;
 ConVar g_cvUpgradePriceJetpack;
 ConVar g_cvUpgradePriceJumpBoost;
 ConVar g_cvUpgradePriceLongJump;
-ConVar g_cvUpgradePriceColorNickname;
 ConVar g_cvUseFOV;
 ConVar g_cvUseSourceMenus;
 
@@ -125,6 +136,7 @@ Handle g_hStatHud[MAXPLAYERS + 1];
 
 int g_iAdvertisement = 1;
 int g_iAllDeaths[MAXPLAYERS + 1];
+int g_iAllHeadshots[MAXPLAYERS + 1];
 int g_iAllKills[MAXPLAYERS + 1];
 int g_iClip_Sizes[] =
 {
@@ -145,7 +157,9 @@ int g_iCredits[MAXPLAYERS + 1];
 int g_iCrowbarDamage;
 int g_iDeaths[MAXPLAYERS + 1];
 int g_iFOV;
+int g_iHeadshots[MAXPLAYERS + 1];
 int g_iHealthBoost;
+int g_iHitgroup[MAXPLAYERS + 1];
 int g_iKills[MAXPLAYERS + 1];
 int g_iLastButton[MAXPLAYERS + 1];
 int g_iStartFOV;
@@ -198,13 +212,13 @@ public void OnPluginStart()
 	g_cvEnableModelChanger = CreateConVar("kdm_player_model_change", "1", "Decides if the player can change their model.", _, true, 0.1, true, 1.0);
 	g_cvEnableSourceTVDemos = CreateConVar("kdm_demos_enable", "1", "Decides if the SourceTV demo recording is enabled.", _, true, 0.1, true, 1.0);
 	g_cvFallingFix = CreateConVar("kdm_player_tposefix", "0", "Decides if to fix the T-Pose falling glitch.", _, true, 0.1, true, 1.0);
-	g_cvFOV = CreateConVar("kdm_player_custom_fov", "110", "The custom FOV value.");
+	g_cvFOV = CreateConVar("kdm_player_custom_fov", "115", "The custom FOV value.");
 	g_cvHalfDamage = CreateConVar("kdm_player_alternatedamage", "0", "Decides if the players have alternate damage.", _, true, 0.1, true, 1.0);
 	g_cvHealthBoost = CreateConVar("kdm_healthboost_amount", "75", "The amount of health the health boost will do.");
 	g_cvHealthModifier = CreateConVar("kdm_player_damage_modifier", "0.5", "Damage modifier. A better description will be added.");
 	g_cvJetpack = CreateConVar("kdm_jetpack_velocity", "60.0", "Jetpack velocity. A better description will be added.");
 	g_cvJumpBoost = CreateConVar("kdm_jumpboost_amount", "500.0", "The added jump velocity.");
-	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "500.0", "The amount of force that the long jump does.");
+	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "650.0", "The amount of force that the long jump does.");
 	g_cvLongJumpSound = CreateConVar("kdm_longjump_play_sound", "1", "Decides if to play the long jump sound.", _, true, 0.1, true, 1.0);
 	g_cvEnableNickname = CreateConVar("kdm_nickname_enable", "1", "Decides if nicknames are enabled.", _, true, 0.1, true, 1.0);
 	g_cvNoFallDamage = CreateConVar("kdm_player_nofalldamage", "1", "Decides if to disable fall damage.", _, true, 0.1, true, 1.0);
@@ -215,7 +229,7 @@ public void OnPluginStart()
 	g_cvSourceTV[2] = FindConVar("tv_maxclients");
 	g_cvSpawnRPG = CreateConVar("kdm_wep_allow_rpg", "0", "Decides if the RPG is allowed to spawn.", _, true, 0.1, true, 1.0);
 	g_cvStartFOV = CreateConVar("kdm_player_start_fov", "20", "The custom start animation FOV value.");
-	g_cvStartHealth = CreateConVar("kdm_player_start_health", "250", "The start player health.");
+	g_cvStartHealth = CreateConVar("kdm_player_start_health", "175", "The start player health.");
 	g_cvUpgradePriceHealthBoost = CreateConVar("kdm_healthboost_price", "350", "The amount of credits you need to pay to use the health boost.");
 	g_cvUpgradePriceInvisibility = CreateConVar("kdm_invisible_price", "500", "The amount of credits you need to pay to use the invisible effect.");
 	g_cvUpgradePriceJetpack = CreateConVar("kdm_jetpack_price", "2000", "The amount of credits you need to pay to use the jetpack module.");
@@ -371,11 +385,6 @@ public void OnPluginStart()
 		{
 			OnClientPutInServer(i);
 		}
-		
-		if (IsClientConnected(i))
-		{
-			SDKHook(i, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
-		}
 	}
 	
 	if (LibraryExists("updater"))
@@ -426,6 +435,8 @@ public void OnMapStart()
 		}
 	}
 	
+	GetCurrentMap(g_sMap, sizeof(g_sMap));
+	
 	g_hAdvertisements = CreateTimer(45.0, Timer_Advertisement, _, TIMER_REPEAT);
 	
 	CreateTimer(15.0, Timer_RPGRemove, _, TIMER_REPEAT);
@@ -468,13 +479,17 @@ public void OnClientPutInServer(int iClient)
 	g_hStatHud[iClient] = CreateTimer(0.1, Timer_StatHud, iClient, TIMER_REPEAT);
 	
 	g_iAllDeaths[iClient] = 0;
+	g_iAllHeadshots[iClient] = 0;
 	g_iAllKills[iClient] = 0;
 	g_iCredits[iClient] = 0;
 	g_iDeaths[iClient] = 0;
 	g_iKills[iClient] = 0;
+	g_iHeadshots[iClient] = 0;
+	g_iHitgroup[iClient] = HITGROUP_GENERIC;
 	
 	SDKHookEx(iClient, SDKHook_FireBulletsPost, Hook_FireBulletsPost);
 	SDKHook(iClient, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
+	SDKHook(iClient, SDKHook_TraceAttackPost,  Hook_TraceAttackPost);
 	SDKHook(iClient, SDKHook_WeaponCanSwitchTo, Hook_WeaponCanSwitchTo);
 	SDKHookEx(iClient, SDKHook_WeaponSwitchPost, Hook_WeaponSwitchPost);
 	
@@ -567,6 +582,16 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 		{
 			iButtons &= ~IN_ATTACK;
 		}else if (iButtons & IN_ATTACK2)
+		{
+			iButtons &= ~IN_ATTACK2;
+		}
+		
+		return Plugin_Continue;
+	}
+	
+	if(StrEqual(sWeapon, "weapon_smg1"))
+	{
+		if (iButtons & IN_ATTACK2)
 		{
 			iButtons &= ~IN_ATTACK2;
 		}
@@ -758,7 +783,7 @@ public Action Command_ChangeNickname(int iClient, int iArgs)
 		}
 	}else{
 		CReplyToCommand(iClient, "[{red}KINGS{default}] Nicknames are disabled.");
-			
+		
 		return Plugin_Handled;
 	}
 }
@@ -875,8 +900,6 @@ public Action Command_DefaultWeapon(int iClient, int iArgs)
 	}
 	
 	SaveClient(iClient);
-	
-	//Client_ChangeWeapon(iClient, g_sDefaultWeapon[iClient]);
 	
 	return Plugin_Handled;
 }
@@ -1223,7 +1246,7 @@ public Action Command_SetNickname(int iClient, int iArgs)
 		}
 	}else{
 		CReplyToCommand(iClient, "[{red}KINGS{default}] Nicknames are disabled.");
-			
+		
 		return Plugin_Handled;
 	}
 }
@@ -1245,8 +1268,6 @@ public Action Handle_Chat(int iClient, char[] sCommand, int iArgs)
 		Format(sColor, sizeof(sColor), "%s", StrEqual(g_sNicknameColor[iClient], "") ? "default" : g_sNicknameColor[iClient]);
 		Format(sFullMessage, sizeof(sFullMessage), "{%s}%N{default} : %s", sColor, iClient, sMessage);
 		
-		//CPrintToChatAll("{%s}%N{default} : %s", sColor, iClient, sMessage);
-		//CPrintToChatAll("{%s}%s", sColor, sColor);
 		CPrintToChatAll(sFullMessage);
 		
 		return Plugin_Handled;
@@ -1562,6 +1583,13 @@ public Action Hook_OnTakeDamage(int iClient, int &iAttacker, int &iInflictor, fl
 	return Plugin_Continue;
 }
 
+public void Hook_TraceAttackPost(int iVictim, int iAttacker, int iInflictor, float fDamage, int iDamageType, int iAmmoType, int iHitbox, int iHitgroup)
+{
+	g_iHitgroup[iVictim] = iHitgroup;
+	
+	//PrintToChatAll("%N's Hitgroup: %i", iVictim, iHitgroup);
+}
+
 public void Hook_WeaponSwitchPost(int iClient, int iWeapon)
 {
 	if (iWeapon != -1)
@@ -1647,54 +1675,143 @@ public Action Event_PlayerClass(Event eEvent, char[] sName, bool bDontBroadcast)
 	eEvent.BroadcastDisabled = true;
 }
 
-public Action Event_PlayerDeath(Handle hEvent, char[] sName, bool bDontBroadcast)
+public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 {
-	char sAttackerColor[MAX_NAME_LENGTH], sClientColor[MAX_NAME_LENGTH];
+	char sAttackerColor[MAX_NAME_LENGTH], sClientColor[MAX_NAME_LENGTH], sWeapon[128];
 	
-	int iClient = GetClientOfUserId(GetEventInt(hEvent, "userid"));
-	int iAttacker = GetClientOfUserId(GetEventInt(hEvent, "attacker"));
+	int iAttacker = GetClientOfUserId(eEvent.GetInt("attacker"));
+	int iClient = GetClientOfUserId(eEvent.GetInt("userid"));
+	
+	eEvent.GetString("weapon", sWeapon, sizeof(sWeapon), "");
 	
 	Format(sAttackerColor, sizeof(sAttackerColor), "%s", StrEqual(g_sNicknameColor[iAttacker], "") ? "default" : g_sNicknameColor[iAttacker]);
 	Format(sClientColor, sizeof(sClientColor), "%s", StrEqual(g_sNicknameColor[iClient], "") ? "default" : g_sNicknameColor[iClient]);
 	
 	Client_SetFOV(iClient, 90);
 	
-	int iRandom = GetRandomInt(7, 15);
-	
 	if (iAttacker != iClient)
 	{
-		if (iAttacker == -1 || iAttacker == 0)
+		if (iAttacker == -1 || iAttacker == 1)
 		{
 			g_iAllDeaths[iClient]++;
 			g_iDeaths[iClient]++;
-		} else {
-			g_iAllKills[iAttacker]++;
-			g_iKills[iAttacker]++;
-			g_iAllDeaths[iClient]++;
-			g_iDeaths[iClient]++;
-			
-			bool bHeadshot = GetEventBool(hEvent, "headshot");
-			
-			if(bHeadshot)
+		} else if(g_iHitgroup[iClient] > 0)
+			switch(g_iHitgroup[iClient])
 			{
-				g_iCredits[iAttacker] += 16;
+				case HITGROUP_HEAD:
+				{
+					int iRandom = GetRandomInt(23, 32);
+					
+					g_iCredits[iAttacker] += iRandom;
+					
+					g_iAllHeadshots[iAttacker]++;
+					g_iHeadshots[iAttacker]++;
+					
+					switch(GetRandomInt(0, 1))
+					{
+						case 0:
+						{
+							CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) got {green}%i{default} credits for getting a headshot kill on {%s}%N{default}!", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), iRandom, sClientColor, iClient);
+						}
+						
+						case 1:
+						{
+							CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) got {green}%i{default} credits for blowing {%s}%N{default}'s brains out.", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), iRandom, sClientColor, iClient);
+						}
+					}
+				}
 				
-				CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) got {green}16{default} credits for getting a headshot kill on {%s}%N{default}!", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), sClientColor, iClient);
-			}else{
-				g_iCredits[iAttacker] += iRandom;
+				case HITGROUP_CHEST:
+				{
+					int iRandom = GetRandomInt(10, 13);
+					
+					g_iCredits[iAttacker] += iRandom;
+					
+					g_iHeadshots[iAttacker] = 0;
+					
+					CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) stole {%s}%N{default}'s torso. (+{green}%i{default} credits)", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), sClientColor, iClient, iRandom);
+				}
 				
-				CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) got {green}%i{default} credits for killing {%s}%N{default}!", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), iRandom, sClientColor, iClient);
+				case HITGROUP_GENERIC:
+				{
+					int iRandom = GetRandomInt(7, 18);
+					
+					g_iCredits[iAttacker] += iRandom;
+					
+					g_iHeadshots[iAttacker] = 0;
+					
+					CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) got {green}%i{default} credits for killing {%s}%N{default}!", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), iRandom, sClientColor, iClient);
+				}
+				
+				case HITGROUP_STOMACH:
+				{
+					int iRandom = GetRandomInt(10, 13);
+					
+					g_iCredits[iAttacker] += iRandom;
+					
+					g_iHeadshots[iAttacker] = 0;
+					
+					CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) fucking gutted {%s}%N{default}. (+{green}%i{default} credits)", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), sClientColor, iClient, iRandom);
+				}
+				
+				case HITGROUP_LEFTARM:
+				{
+					int iRandom = GetRandomInt(4, 11);
+					
+					g_iCredits[iAttacker] += iRandom;
+					
+					g_iHeadshots[iAttacker] = 0;
+					
+					CPrintToChatAll("Eh, {%s}%N{default} didn't use that arm anyways. {%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) (+{green}%i{default} credits)", sClientColor, iClient, sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), iRandom);
+				}
+				
+				case HITGROUP_RIGHTARM:
+				{
+					int iRandom = GetRandomInt(6, 13);
+					
+					g_iCredits[iAttacker] += iRandom;
+					
+					g_iHeadshots[iAttacker] = 0;
+					
+					CPrintToChatAll("Oh no! {%s}%N{default}'s super hand! {%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) (+{green}%i{default} credits)", sClientColor, iClient, sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), iRandom);
+				}
+				
+				case HITGROUP_LEFTLEG:
+				{
+					int iRandom = GetRandomInt(3, 7);
+					
+					g_iCredits[iAttacker] += iRandom;
+					
+					g_iHeadshots[iAttacker] = 0;
+					
+					CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) got {green}%i{default} credits for killing {%s}%N{default}!", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), iRandom, sClientColor, iClient);
+				}
+				
+				case HITGROUP_RIGHTLEG:
+				{
+					int iRandom = GetRandomInt(3, 8);
+					
+					g_iCredits[iAttacker] += iRandom;
+					
+					g_iHeadshots[iAttacker] = 0;
+					
+					CPrintToChatAll("{%s}%N{default} ({green}%i{default}HP, {green}%i{default} Suit) got {green}%i{default} credits for killing {%s}%N{default}!", sAttackerColor, iAttacker, GetClientHealth(iAttacker), Client_GetArmor(iAttacker), iRandom, sClientColor, iClient);
+				}
 			}
-			
-			SaveClient(iClient);
 		}
+		
+		SaveClient(iClient);
 	} else {
 		g_iAllKills[iClient]--;
 		g_iKills[iClient]--;
 		g_iAllDeaths[iClient]++;
 		g_iDeaths[iClient]++;
 		
+		int iRandom = GetRandomInt(7, 15);
+		
 		g_iCredits[iClient] -= iRandom;
+		
+		g_iHeadshots[iAttacker] = 0;
 		
 		CPrintToChatAll("{%s}%N{default} has lost {green}%i{default} credits for killing themselves.", sClientColor, iClient, iRandom);
 	}
@@ -1706,9 +1823,9 @@ public Action Event_PlayerDeath(Handle hEvent, char[] sName, bool bDontBroadcast
 	CreateTimer(1.5, Timer_Dissolve, iClient);
 }
 
-public Action Event_PlayerSpawn(Handle hEvent, char[] sName, bool bDontBroadcast)
+public Action Event_PlayerSpawn(Event eEvent, char[] sName, bool bDontBroadcast)
 {
-	int iClient = GetClientOfUserId(GetEventInt(hEvent, "userid"));
+	int iClient = GetClientOfUserId(eEvent.GetInt("userid"));
 	
 	CreateTimer(0.1, Timer_Guns, iClient);
 	
@@ -1725,10 +1842,10 @@ public Action Event_PlayerSpawn(Handle hEvent, char[] sName, bool bDontBroadcast
 	SetEntityHealth(iClient, g_iStartHealth);
 }
 
-public Action Event_RoundEnd(Handle hEvent, char[] sName, bool bDontBroadcast)
+public Action Event_RoundEnd(Event eEvent, char[] sName, bool bDontBroadcast)
 {
 	char sMap[128], sMessage[MAX_MESSAGE_LENGTH];
-	int iClient = GetClientOfUserId(GetEventInt(hEvent, "winner"));
+	int iClient = GetClientOfUserId(eEvent.GetInt("winner"));
 	
 	CPrintToChatAll("{red}[KINGS]{default} Congratulations to {%s}%N{default} for winning round with {green}%i{default} kills and {green}%i{default} deaths.", view_as<bool>(GetRandomInt(0, 1)) ? "blue" : "green", g_iKills[iClient], g_iDeaths[iClient]);
 	
@@ -1897,7 +2014,7 @@ public Action Timer_Protection(Handle hTimer, any iClient)
 
 public Action Timer_StatHud(Handle hTimer, any iClient)
 {
-	char sStatsHud[2][128];
+	char sStatsHud[3][128];
 	
 	float fAllKTD, fRoundKTD;
 	
@@ -1907,17 +2024,17 @@ public Action Timer_StatHud(Handle hTimer, any iClient)
 	
 	if (IsClientInGame(iClient))
 	{
-		fAllKTD = ((g_iAllDeaths[iClient] <= 0.0) ? 0.0 : view_as<float>(g_iAllKills[iClient]) / view_as<float>(g_iAllDeaths[iClient]));//FloatDiv(float(g_iKills[iClient]), float(g_iDeaths[iClient])));
-		fRoundKTD = ((g_iDeaths[iClient] <= 0.0) ? 0.0 : view_as<float>(g_iKills[iClient]) / view_as<float>(g_iDeaths[iClient]));//FloatDiv(float(g_iKills[iClient]), float(g_iDeaths[iClient])));
+		fAllKTD = ((g_iAllDeaths[iClient] <= 0) ? 0.0 : view_as<float>(g_iAllKills[iClient]) / view_as<float>(g_iAllDeaths[iClient]));
+		fRoundKTD = ((Client_GetDeaths(iClient) <= 0) ? 0.0 : view_as<float>(Client_GetScore(iClient)) / view_as<float>(Client_GetDeaths(iClient)));
 		
 		if(g_bAllKills)
 		{
-			g_bPrivateMatchRunning ? Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n%.1f All-Time KTD\nServer Password: %s", iClient, g_iCredits[iClient], fAllKTD, g_sServerPassword) : Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n%.1f All-Time KTD", iClient, g_iCredits[iClient], fAllKTD);
+			Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%.2f All-Time KTD\n%.1f Round KTD", iClient, g_iCredits[iClient], Client_GetScore(iClient), Client_GetDeaths(iClient), g_iAllHeadshots[iClient], fAllKTD, fRoundKTD);
 		}else{
-			g_bPrivateMatchRunning ? Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\nServer Password: %s", iClient, g_iCredits[iClient], g_sServerPassword) : Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i", iClient, g_iCredits[iClient]);
+			Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%.1f Round KTD", iClient, g_iCredits[iClient], Client_GetScore(iClient), Client_GetDeaths(iClient), g_iAllHeadshots[iClient], fRoundKTD);
 		}
 		
-		Format(sStatsHud[1], sizeof(sStatsHud[]), "Stats:\n%i Kills\n%i Deaths\n%.1f Round KTD\nTimeleft: %d:%02d", Client_GetScore(iClient), Client_GetDeaths(iClient), fRoundKTD, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60));
+		g_bPrivateMatchRunning ? Format(sStatsHud[1], sizeof(sStatsHud[]), "Password: %s\nCurrent Map: %s\nTimeleft: %d:%02d", g_sServerPassword, g_sMap, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60)) : Format(sStatsHud[1], sizeof(sStatsHud[]), "Current Map: %s\nTimeleft: %d:%02d", g_sMap, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60));
 		
 		if(IsClientSourceTV(iClient))
 		{
@@ -1926,7 +2043,7 @@ public Action Timer_StatHud(Handle hTimer, any iClient)
 				if(g_bPlayer[i] && !IsClientSourceTV(i))
 				{
 					Format(sStatsHud[0], sizeof(sStatsHud[]), "");
-					Format(sStatsHud[0], sizeof(sStatsHud[]), "%s%N | Kills: %i / Deaths: %i\n", sStatsHud[0], i, Client_GetScore(i), Client_GetDeaths(i));
+					Format(sStatsHud[0], sizeof(sStatsHud[]), "%s%N | Kills: %i / Deaths: %i | Headshots: %i\n", sStatsHud[0], i, Client_GetScore(i), Client_GetDeaths(i), g_iAllHeadshots[iClient]);
 				}
 			}
 			
@@ -1935,9 +2052,8 @@ public Action Timer_StatHud(Handle hTimer, any iClient)
 		
 		SetHudTextParams(0.010, 0.010, 0.5, 255, 128, 0, 128, 0, 0.1, 0.1, 0.1);
 		ShowHudText(iClient, -1, sStatsHud[0]);
-		SetHudTextParams(-0.010, 0.010, 0.5, 255, 128, 0, 128, 0, 0.1, 0.1, 0.1);
+		SetHudTextParams(1.0, 0.010, 0.5, 255, 128, 0, 128, 0, 0.1, 0.1, 0.1);
 		ShowHudText(iClient, -1, sStatsHud[1]);
-		
 	}
 }
 

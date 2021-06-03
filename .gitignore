@@ -1,4 +1,4 @@
-
+*.dem
 addons/metamod.vdf
 addons/metamod_x64.vdf
 addons/sourcemod/data/kingsdeathmatch/clients.txt
@@ -228,3 +228,7 @@ auto-20210430-2325-dm_permanent.dem
 auto-20210430-2340-dm_911_1337.dem
 auto-20210501-0011-dm_arc_sanctuary_fixed.dem
 auto-20210430-2356-dm_zeta_prefinal.dem
+addons/sourcemod/data/dumps/server-id.txt
+addons/sourcemod/updatefile.txt
+addons/sourcemod/scripting/lilac.sp
+addons/sourcemod/plugins/lilac.smx
