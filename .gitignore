@@ -232,3 +232,8 @@ addons/sourcemod/data/dumps/server-id.txt
 addons/sourcemod/updatefile.txt
 addons/sourcemod/scripting/lilac.sp
 addons/sourcemod/plugins/lilac.smx
+addons/sourcemod/data/kdm_classic/advertisements.txt
+addons/sourcemod/data/kdm_classic/clients.txt
+addons/sourcemod/data/kdm_classic/models.txt
+addons/sourcemod/kdmclassic_updater.upd
+addons/sourcemod/plugins/kdm_classic.smx

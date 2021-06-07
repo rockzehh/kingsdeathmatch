@@ -1,4 +1,4 @@
-//King's Deathmatch: Developed by King Nothing.
+//King's Deathmatch - Classic: Developed by King Nothing.
 #pragma semicolon 1
 
 #define DEBUG
@@ -39,7 +39,7 @@
 #define SUIT_DEVICE_FLASHLIGHT	0x00000002
 #define SUIT_DEVICE_SPRINT		0x00000001
 
-#define UPDATE_URL	"https://raw.githubusercontent.com/rockzehh/kingsdeathmatch/master/addons/sourcemod/kdm_updater.upd"
+#define UPDATE_URL	"https://raw.githubusercontent.com/rockzehh/kingsdeathmatch/master/addons/sourcemod/kdmclassic_updater.upd"
 
 bool g_bAllKills;
 bool g_bAltDamage;
@@ -181,7 +181,7 @@ KeyValues g_kvAdvertisements;
 //Plugin Information
 public Plugin myinfo =
 {
-	name = "King's Deathmatch",
+	name = "King's Deathmatch - Classic",
 	author = PLUGIN_AUTHOR,
 	description = "A custom deathmatch plugin for Half-Life 2: Deathmatch.",
 	version = PLUGIN_VERSION,
@@ -318,25 +318,25 @@ public void OnPluginStart()
 	g_cvUseFOV.AddChangeHook(OnConVarsChanged);
 	g_cvUseSourceMenus.AddChangeHook(OnConVarsChanged);
 	
-	AutoExecConfig(true, "kings-deathmatch");
+	AutoExecConfig(true, "kdm_classic");
 	
 	char sPath[PLATFORM_MAX_PATH];
 	
-	BuildPath(Path_SM, sPath, sizeof(sPath), "data/kingsdeathmatch");
+	BuildPath(Path_SM, sPath, sizeof(sPath), "data/kdm_classic");
 	if (!DirExists(sPath))
 	{
 		CreateDirectory(sPath, 511);
 	}
 	
-	BuildPath(Path_SM, g_sAdvertisementsDatabase, PLATFORM_MAX_PATH, "data/kingsdeathmatch/advertisements.txt");
+	BuildPath(Path_SM, g_sAdvertisementsDatabase, PLATFORM_MAX_PATH, "data/kdm_classic/advertisements.txt");
 	if(!FileExists(g_sAdvertisementsDatabase))
 	{
 		g_bNoAdvertisements = false;
 	}
 	
-	BuildPath(Path_SM, g_sClientsDatabase, PLATFORM_MAX_PATH, "data/kingsdeathmatch/clients.txt");
+	BuildPath(Path_SM, g_sClientsDatabase, PLATFORM_MAX_PATH, "data/kdm_classic/clients.txt");
 	
-	BuildPath(Path_SM, g_sModelsDatabase, PLATFORM_MAX_PATH, "data/kingsdeathmatch/models.txt");
+	BuildPath(Path_SM, g_sModelsDatabase, PLATFORM_MAX_PATH, "data/kdm_classic/models.txt");
 	if(!FileExists(g_sModelsDatabase))
 	{
 		g_bEnableModelChanger = false;
@@ -441,7 +441,7 @@ public void OnPluginStart()
 	//Sound from Black Mesa: Source (2012 Mod)
 	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_long1.mp3");
 	
-	SteamWorks_SetGameDescription("King's DM");
+	SteamWorks_SetGameDescription("King's DM - Classic");
 }
 
 public void OnPluginEnd()
