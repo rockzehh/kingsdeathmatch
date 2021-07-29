@@ -1,5 +1,8 @@
 King's Deathmatch - Changelog:
 
+v1.4.0:
+	I got lazy... <3
+
 v1.3.0:
 	
 	1.30-b4
