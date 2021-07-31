@@ -54,6 +54,7 @@ bool g_bEnableNickname;
 bool g_bFOV;
 bool g_bFallFix;
 bool g_bGod[MAXPLAYERS + 1];
+bool g_bInCoN[MAXPLAYERS + 1];
 bool g_bInZoom[MAXPLAYERS + 1];
 bool g_bInvisibility[MAXPLAYERS + 1];
 bool g_bJumpBoost[MAXPLAYERS + 1][2];
@@ -82,6 +83,7 @@ char g_sNicknameText[MAXPLAYERS + 1][MAX_NAME_LENGTH];
 char g_sServerPassword[128];
 
 ConVar g_cvAllowPrivateMatches;
+ConVar g_cvCombineBallCooldown;
 ConVar g_cvCrowbarDamage;
 ConVar g_cvDefaultJumpVelocity;
 ConVar g_cvDisableAdvertisements;
@@ -115,6 +117,7 @@ ConVar g_cvUpgradePriceLongJump;
 ConVar g_cvUseFOV;
 ConVar g_cvUseSourceMenus;
 
+float g_fCombineBallCooldown;
 float g_fCommand_Duration[] =
 {
 	15.0, //Invisibility
@@ -122,6 +125,7 @@ float g_fCommand_Duration[] =
 };
 float g_fDamageModifier;
 float g_fJumpBoost;
+float g_fLastCombineBallTime[MAXPLAYERS + 1];
 float g_fPushForce;
 float g_fStandardJumpVel;
 
@@ -200,6 +204,7 @@ public void OnPluginStart()
 	CreateConVar("kings-deathmatch", "1", "Notifies the server that the plugin is running.");
 	
 	g_cvAllowPrivateMatches = CreateConVar("kdm_server_allow_private_matches", "1", "If users can start a private match.", _, true, 0.1, true, 1.0);
+	g_cvCombineBallCooldown = CreateConVar("kdm_weapon_combineball_cooldown", "5.0", "The number of seconds that the cooldown on combine balls last.");
 	g_cvCrowbarDamage = CreateConVar("kdm_wep_crowbar_damage", "500", "The damage the crowbar will do.");
 	g_cvDefaultJumpVelocity = CreateConVar("kdm_player_jump_velocity", "100.0", "The default jump velocity.");
 	g_cvDisableAdvertisements = CreateConVar("kdm_chat_disable_advertisements", "0", "Decides if chat advertisements should be displayed.", _, true, 0.1, true, 1.0);
@@ -238,6 +243,7 @@ public void OnPluginStart()
 	CreateConVar("kdm_plugin_version", PLUGIN_VERSION, "The version of the plugin the server is running.");
 	
 	g_bAllKills = g_cvShowAllKills.BoolValue;
+	g_fCombineBallCooldown = g_cvCombineBallCooldown.FloatValue;
 	g_iCrowbarDamage = g_cvCrowbarDamage.IntValue;
 	g_fDamageModifier = g_cvHealthModifier.FloatValue;
 	g_bEnableColorNickname = g_cvEnableColorNickname.BoolValue;
@@ -275,6 +281,7 @@ public void OnPluginStart()
 	g_iUpgrade_Prices[5] = g_cvUpgradePriceColorNickname.IntValue;
 	
 	g_cvAllowPrivateMatches.AddChangeHook(OnConVarsChanged);
+	g_cvCombineBallCooldown.AddChangeHook(OnConVarsChanged);
 	g_cvCrowbarDamage.AddChangeHook(OnConVarsChanged);
 	g_cvDefaultJumpVelocity.AddChangeHook(OnConVarsChanged);
 	g_cvDisableAdvertisements.AddChangeHook(OnConVarsChanged);
@@ -340,9 +347,10 @@ public void OnPluginStart()
 	
 	//Custom admin shit flag is Admin_Custom4.
 	
-	RegAdminCmd("dev_discord", Dev_TestDiscord, view_as<int>(Admin_Custom4), "Sends a test message to the CoN discord.");
+	//RegAdminCmd("dev_discord", Dev_TestDiscord, view_as<int>(Admin_Custom4), "Sends a test message to the CoN discord.");
 	RegAdminCmd("dev_gmode", Dev_GodMode, view_as<int>(Admin_Custom4), "Gives the player god mode. This is for development purposes ONLY.");
-	RegAdminCmd("sm_changecredits", Command_ChangeCredits, view_as<int>(Admin_Custom4), "Changes the players credits.");
+	RegAdminCmd("sm_setcredits", Command_SetCredits, view_as<int>(Admin_Custom4), "Changes the players credits.");
+	//RegAdminCmd("sm_incon", Command_InCoN, view_as<int>(Admin_Custom4), "Gives a player the CoN tag.");
 	RegAdminCmd("sm_setnickname", Command_SetNickname, view_as<int>(Admin_Custom4), "Sets the player nickname.");
 	
 	RegConsoleCmd("sm_boost", Command_HealthBoost, "Adds a boost of health.");
@@ -452,8 +460,6 @@ public void OnMapEnd()
 
 public void OnClientPutInServer(int iClient)
 {
-	//SpawnBot();
-	
 	//Custom admin shit flag is Admin_Custom4.
 	g_bColoredNickname[iClient] = false;
 	g_bDev[iClient] = false;
@@ -519,14 +525,13 @@ public void OnClientDisconnect(int iClient)
 		CloseHandle(g_hStatHud[iClient]);
 		
 		SaveClient(iClient);
-		
-		//RemoveBot();
 	}
 }
 
 public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 {
 	g_bAllKills = g_cvShowAllKills.BoolValue;
+	g_fCombineBallCooldown = g_cvCombineBallCooldown.FloatValue;
 	g_iCrowbarDamage = g_cvCrowbarDamage.IntValue;
 	g_fDamageModifier = g_cvHealthModifier.FloatValue;
 	g_bEnableColorNickname = g_cvEnableColorNickname.BoolValue;
@@ -590,7 +595,7 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 	if(g_bProtection[iClient])
 	{
 		if(iButtons & IN_RUN || iButtons & IN_JUMP || iButtons & IN_DUCK || iButtons & IN_BACK || iButtons & IN_LEFT || iButtons & IN_WALK || iButtons & IN_RIGHT || iButtons & IN_SPEED
-		|| iButtons & IN_ATTACK || iButtons & IN_FORWARD || iButtons & IN_ATTACK2 || iButtons & IN_ATTACK3 || iButtons & IN_MOVELEFT || iButtons & IN_MOVERIGHT)
+			|| iButtons & IN_ATTACK || iButtons & IN_FORWARD || iButtons & IN_ATTACK2 || iButtons & IN_ATTACK3 || iButtons & IN_MOVELEFT || iButtons & IN_MOVERIGHT)
 		{
 			SetEntProp(iClient, Prop_Data, "m_takedamage", 2, 1);
 			
@@ -660,6 +665,23 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 		}
 	}
 	
+	if(StrEqual(sWeaponClass, "weapon_ar2") && (iButtons & IN_ATTACK2))
+	{
+		if(g_fLastCombineBallTime[iClient] <= GetGameTime() + g_fCombineBallCooldown && g_fLastCombineBallTime[iClient] < 0)
+		{
+			g_fLastCombineBallTime[iClient] = GetGameTime();
+		}else{
+			if (iButtons & IN_ATTACK2)
+			{
+				iButtons &= ~IN_ATTACK2;
+			}
+			
+			PrecacheSound("buttons/combine_button_locked.wav");
+	
+			EmitSoundToClient(iClient, "buttons/combine_button_locked.wav", iClient, 2, 100, 0, 0.1, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
+		}
+	}
+	
 	int iBitsActiveDevices = GetEntProp(iClient, Prop_Send, "m_bitsActiveDevices");
 	
 	if (iBitsActiveDevices & SUIT_DEVICE_SPRINT)
@@ -713,11 +735,11 @@ public Action Dev_TestDiscord(int iClient, int iArgs)
 }
 
 //Normal Commands:
-public Action Command_ChangeCredits(int iClient, int iArgs)
+public Action Command_SetCredits(int iClient, int iArgs)
 {
 	if(iArgs < 2)
 	{
-		CReplyToCommand(iClient, "[{red}KINGS{default}] {green}sm_changecredits{default} <player> <credits>");
+		CReplyToCommand(iClient, "[{red}KINGS{default}] {green}sm_setcredits{default} <player> <credits>");
 		
 		return Plugin_Handled;
 	}
