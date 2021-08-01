@@ -711,6 +711,7 @@ stock Handle InitColorTrie()
 	SetTrieValue(hTrie, "deepskyblue", 0x00BFFF);
 	SetTrieValue(hTrie, "dimgray", 0x696969);
 	SetTrieValue(hTrie, "dimgrey", 0x696969);
+	SetTrieValue(hTrie, "dioxazine", 0x52018C);
 	SetTrieValue(hTrie, "dodgerblue", 0x1E90FF);
 	SetTrieValue(hTrie, "exalted", 0xCCCCCD); // same as Exalted item quality in Dota 2
 	SetTrieValue(hTrie, "firebrick", 0xB22222);
@@ -775,6 +776,7 @@ stock Handle InitColorTrie()
 	SetTrieValue(hTrie, "mintcream", 0xF5FFFA);
 	SetTrieValue(hTrie, "mistyrose", 0xFFE4E1);
 	SetTrieValue(hTrie, "moccasin", 0xFFE4B5);
+	SetTrieValue(hTrie, "momo", 0x52018C);
 	SetTrieValue(hTrie, "mythical", 0x8847FF); // same as Mythical item rarity in Dota 2
 	SetTrieValue(hTrie, "navajowhite", 0xFFDEAD);
 	SetTrieValue(hTrie, "navy", 0x000080);
