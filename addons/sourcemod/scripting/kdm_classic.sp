@@ -204,7 +204,7 @@ public void OnPluginStart()
 	CreateConVar("kings-deathmatch", "1", "Notifies the server that the plugin is running.");
 	
 	g_cvAllowPrivateMatches = CreateConVar("kdm_server_allow_private_matches", "1", "If users can start a private match.", _, true, 0.1, true, 1.0);
-	g_cvCombineBallCooldown = CreateConVar("kdm_weapon_combineball_cooldown", "5.0", "The number of seconds that the cooldown on combine balls last.");
+	g_cvCombineBallCooldown = CreateConVar("kdm_weapon_combineball_cooldown", "2.5", "The number of seconds that the cooldown on combine balls last.");
 	g_cvCrowbarDamage = CreateConVar("kdm_wep_crowbar_damage", "500", "The damage the crowbar will do.");
 	g_cvDefaultJumpVelocity = CreateConVar("kdm_player_jump_velocity", "100.0", "The default jump velocity.");
 	g_cvDisableAdvertisements = CreateConVar("kdm_chat_disable_advertisements", "0", "Decides if chat advertisements should be displayed.", _, true, 0.1, true, 1.0);
@@ -216,11 +216,11 @@ public void OnPluginStart()
 	g_cvEnableSourceTVDemos = CreateConVar("kdm_demos_enable", "1", "Decides if the SourceTV demo recording is enabled.", _, true, 0.1, true, 1.0);
 	g_cvFallingFix = CreateConVar("kdm_player_tposefix", "0", "Decides if to fix the T-Pose falling glitch.", _, true, 0.1, true, 1.0);
 	g_cvFOV = CreateConVar("kdm_player_custom_fov", "115", "The custom FOV value.");
-	g_cvHalfDamage = CreateConVar("kdm_player_alternatedamage", "0", "Decides if the players have alternate damage.", _, true, 0.1, true, 1.0);
+	g_cvHalfDamage = CreateConVar("kdm_player_alternatedamage", "1", "Decides if the players have alternate damage.", _, true, 0.1, true, 1.0);
 	g_cvHealthBoost = CreateConVar("kdm_healthboost_amount", "75", "The amount of health the health boost will do.");
 	g_cvHealthModifier = CreateConVar("kdm_player_damage_modifier", "0.5", "Damage modifier. A better description will be added.");
 	g_cvJumpBoost = CreateConVar("kdm_jumpboost_amount", "500.0", "The added jump velocity.");
-	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "650.0", "The amount of force that the long jump does.");
+	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "700.0", "The amount of force that the long jump does.");
 	g_cvLongJumpSound = CreateConVar("kdm_longjump_play_sound", "1", "Decides if to play the long jump sound.", _, true, 0.1, true, 1.0);
 	g_cvEnableNickname = CreateConVar("kdm_nickname_enable", "1", "Decides if nicknames are enabled.", _, true, 0.1, true, 1.0);
 	g_cvNoFallDamage = CreateConVar("kdm_player_nofalldamage", "1", "Decides if to disable fall damage.", _, true, 0.1, true, 1.0);
@@ -476,6 +476,8 @@ public void OnClientPutInServer(int iClient)
 	g_bProtection[iClient] = false;
 	g_bZoom[iClient] = false;
 	
+	g_fLastCombineBallTime[iClient] = 0.0;
+	
 	g_hStatHud[iClient] = CreateTimer(0.1, Timer_StatHud, iClient, TIMER_REPEAT);
 	
 	g_iAllDeaths[iClient] = 0;
@@ -667,19 +669,20 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 	
 	if(StrEqual(sWeaponClass, "weapon_ar2") && (iButtons & IN_ATTACK2))
 	{
-		if(g_fLastCombineBallTime[iClient] <= GetGameTime() + g_fCombineBallCooldown && g_fLastCombineBallTime[iClient] < 0)
+		if(g_fLastCombineBallTime[iClient] + g_fCombineBallCooldown <= GetGameTime())
 		{
 			g_fLastCombineBallTime[iClient] = GetGameTime();
 		}else{
+			/*PrecacheSound("buttons/combine_button_locked.wav");
+	
+			EmitSoundToClient(iClient, "buttons/combine_button_locked.wav", iClient, 2, 150, 0, 0.1, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);*/
+			
 			if (iButtons & IN_ATTACK2)
 			{
 				iButtons &= ~IN_ATTACK2;
 			}
-			
-			PrecacheSound("buttons/combine_button_locked.wav");
-	
-			EmitSoundToClient(iClient, "buttons/combine_button_locked.wav", iClient, 2, 100, 0, 0.1, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);
 		}
+		
 	}
 	
 	int iBitsActiveDevices = GetEntProp(iClient, Prop_Send, "m_bitsActiveDevices");

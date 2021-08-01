@@ -206,3 +206,4 @@ addons/sourcemod/data/kdm_rewrite/clients.txt
 addons/sourcemod/data/kdm_classic/clients.txt
 addons/sourcemod/data/dumps/server-id.txt
 *.dem
+addons/sourcemod/plugins/disabled/updater.smx
