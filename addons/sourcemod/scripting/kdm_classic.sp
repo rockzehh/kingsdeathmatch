@@ -337,7 +337,6 @@ public void OnPluginStart()
 		g_bEnableModelChanger = false;
 	}
 	
-	//HookEvent("player_changename", Event_PlayerChangename);
 	HookEvent("player_class", Event_PlayerClass);
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_spawn", Event_PlayerSpawn);
@@ -347,10 +346,8 @@ public void OnPluginStart()
 	
 	//Custom admin shit flag is Admin_Custom4.
 	
-	//RegAdminCmd("dev_discord", Dev_TestDiscord, view_as<int>(Admin_Custom4), "Sends a test message to the CoN discord.");
 	RegAdminCmd("dev_gmode", Dev_GodMode, view_as<int>(Admin_Custom4), "Gives the player god mode. This is for development purposes ONLY.");
 	RegAdminCmd("sm_setcredits", Command_SetCredits, view_as<int>(Admin_Custom4), "Changes the players credits.");
-	//RegAdminCmd("sm_incon", Command_InCoN, view_as<int>(Admin_Custom4), "Gives a player the CoN tag.");
 	RegAdminCmd("sm_setnickname", Command_SetNickname, view_as<int>(Admin_Custom4), "Sets the player nickname.");
 	
 	RegConsoleCmd("sm_boost", Command_HealthBoost, "Adds a boost of health.");
