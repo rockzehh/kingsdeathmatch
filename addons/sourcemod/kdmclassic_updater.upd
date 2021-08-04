@@ -8,7 +8,7 @@
 			"Previous"	"1.4.0"
 		}
 		
-		"Notes"	"Added cooldown timer to the AR2 Combine Balls."
+		"Notes"	"Added the functionality to save scores if you disconnect and rejoin that same round."
 	}
 	
 	"Files"

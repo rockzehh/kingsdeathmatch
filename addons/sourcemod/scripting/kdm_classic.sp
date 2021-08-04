@@ -73,6 +73,7 @@ bool g_bRPG;
 bool g_bZoom[MAXPLAYERS + 1];
 
 char g_sAdvertisementsDatabase[PLATFORM_MAX_PATH];
+char g_sAuthID[MAXPLAYERS + 1][64];
 char g_sClientsDatabase[PLATFORM_MAX_PATH];
 char g_sDefaultWeapon[MAXPLAYERS + 1][64];
 char g_sMap[128];
@@ -178,6 +179,9 @@ int g_iUpgrade_Prices[] =
 };
 
 KeyValues g_kvAdvertisements;
+
+StringMap g_smDeaths;
+StringMap g_smKills;
 
 //Plugin Information
 public Plugin myinfo =
@@ -337,7 +341,7 @@ public void OnPluginStart()
 		g_bEnableModelChanger = false;
 	}
 	
-	HookEvent("player_class", Event_PlayerClass);
+	HookEvent("game_end", Event_GameEnd);
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_spawn", Event_PlayerSpawn);
 	
@@ -386,6 +390,9 @@ public void OnPluginStart()
 		Updater_AddPlugin(UPDATE_URL);
 	}
 	
+	g_smDeaths = CreateTrie();
+	g_smKills = CreateTrie();
+	
 	g_kvAdvertisements = new KeyValues("Advertisements");
 	
 	g_kvAdvertisements.ImportFromFile(g_sAdvertisementsDatabase);
@@ -433,6 +440,9 @@ public void OnMapStart()
 	
 	GetCurrentMap(g_sMap, sizeof(g_sMap));
 	
+	g_smDeaths.Clear();
+	g_smKills.Clear();
+	
 	g_hAdvertisements = CreateTimer(45.0, Timer_Advertisement, _, TIMER_REPEAT);
 	
 	CreateTimer(15.0, Timer_RPGRemove, _, TIMER_REPEAT);
@@ -452,11 +462,28 @@ public void OnMapEnd()
 		}
 	}
 	
+	g_smDeaths.Clear();
+	g_smKills.Clear();
+	
 	g_bPrivateMatchRunning = StrEqual(g_sServerPassword, "") ? false : true;
 }
 
 public void OnClientPutInServer(int iClient)
 {
+	int iDeaths, iKills;
+	
+	GetClientAuthId(iClient, AuthId_Steam2, g_sAuthID[iClient], sizeof(g_sAuthID[]));
+	
+	if(g_smDeaths.GetValue(g_sAuthID[iClient], iDeaths))
+	{
+		Client_SetDeaths(iClient, iDeaths);
+	}
+	
+	if(g_smKills.GetValue(g_sAuthID[iClient], iKills))
+	{
+		Client_SetScore(iClient, iKills);
+	}
+	
 	//Custom admin shit flag is Admin_Custom4.
 	g_bColoredNickname[iClient] = false;
 	g_bDev[iClient] = false;
@@ -510,6 +537,9 @@ public void OnClientDisconnect(int iClient)
 {
 	if(g_bPlayer[iClient])
 	{
+		g_smDeaths.SetValue(g_sAuthID[iClient], Client_GetDeaths(iClient));
+		g_smKills.SetValue(g_sAuthID[iClient], Client_GetScore(iClient));
+	
 		g_bDev[iClient] = false;
 		g_bInvisibility[iClient] = false;
 		g_bInZoom[iClient] = false;
@@ -1325,39 +1355,35 @@ public int LoadInteger(KeyValues kvVault, char[] sKey, char[] sSaveKey, int iDef
 
 public void LoadClient(int iClient)
 {
-	char sAuthID[64];
-	
-	GetClientAuthId(iClient, AuthId_Steam2, sAuthID, sizeof(sAuthID));
-	
 	KeyValues kvVault = new KeyValues("Credits");
 	
 	kvVault.ImportFromFile(g_sClientsDatabase);
 	
-	kvVault.JumpToKey(sAuthID, false);
+	kvVault.JumpToKey(g_sAuthID[iClient], false);
 	
-	g_iAllDeaths[iClient] = LoadInteger(kvVault, sAuthID, "all_deaths", 0);
-	g_iAllGeneric[iClient] = LoadInteger(kvVault, sAuthID, "all_generic", 0);
-	g_iAllHeadshots[iClient] = LoadInteger(kvVault, sAuthID, "all_headshots", 0);
-	g_iAllHealthBoosts[iClient] = LoadInteger(kvVault, sAuthID, "all_healthboosts", 0);
-	g_iAllHitBot[iClient] = LoadInteger(kvVault, sAuthID, "all_hitbot", 0);
-	g_iAllKills[iClient] = LoadInteger(kvVault, sAuthID, "all_kills", 0);
-	g_iAllPerfectMaps[iClient] = LoadInteger(kvVault, sAuthID, "all_perfectmaps", 0);
-	g_iAllSuicides[iClient] = LoadInteger(kvVault, sAuthID, "all_suicides", 0);
+	g_iAllDeaths[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "all_deaths", 0);
+	g_iAllGeneric[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "all_generic", 0);
+	g_iAllHeadshots[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "all_headshots", 0);
+	g_iAllHealthBoosts[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "all_healthboosts", 0);
+	g_iAllHitBot[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "all_hitbot", 0);
+	g_iAllKills[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "all_kills", 0);
+	g_iAllPerfectMaps[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "all_perfectmaps", 0);
+	g_iAllSuicides[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "all_suicides", 0);
 	
-	g_iCredits[iClient] = LoadInteger(kvVault, sAuthID, "credits", 1500);
+	g_iCredits[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "credits", 1500);
 	
-	LoadString(kvVault, sAuthID, "default_weapon", "weapon_357", g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon));
+	LoadString(kvVault, g_sAuthID[iClient], "default_weapon", "weapon_357", g_sDefaultWeapon[iClient], sizeof(g_sDefaultWeapon));
 	
-	g_bJumpBoost[iClient][0] = view_as<bool>(LoadInteger(kvVault, sAuthID, "jump_boost", 0));
-	g_bJumpBoost[iClient][1] = view_as<bool>(LoadInteger(kvVault, sAuthID, "previous_jb_setting", 0));
+	g_bJumpBoost[iClient][0] = view_as<bool>(LoadInteger(kvVault, g_sAuthID[iClient], "jump_boost", 0));
+	g_bJumpBoost[iClient][1] = view_as<bool>(LoadInteger(kvVault, g_sAuthID[iClient], "previous_jb_setting", 0));
 	
-	g_bLongJump[iClient][0] = view_as<bool>(LoadInteger(kvVault, sAuthID, "long_jump", 0));
-	g_bLongJump[iClient][1] = view_as<bool>(LoadInteger(kvVault, sAuthID, "previous_lj_setting", 0));
+	g_bLongJump[iClient][0] = view_as<bool>(LoadInteger(kvVault, g_sAuthID[iClient], "long_jump", 0));
+	g_bLongJump[iClient][1] = view_as<bool>(LoadInteger(kvVault, g_sAuthID[iClient], "previous_lj_setting", 0));
 	
-	LoadString(kvVault, sAuthID, "nickname_color", "", g_sNicknameColor[iClient], sizeof(g_sNicknameColor));
-	LoadString(kvVault, sAuthID, "nickname_text", "", g_sNicknameText[iClient], sizeof(g_sNicknameText));
+	LoadString(kvVault, g_sAuthID[iClient], "nickname_color", "", g_sNicknameColor[iClient], sizeof(g_sNicknameColor));
+	LoadString(kvVault, g_sAuthID[iClient], "nickname_text", "", g_sNicknameText[iClient], sizeof(g_sNicknameText));
 	
-	LoadString(kvVault, sAuthID, "player_model", "", g_sModelName[iClient], sizeof(g_sModelName));
+	LoadString(kvVault, g_sAuthID[iClient], "player_model", "", g_sModelName[iClient], sizeof(g_sModelName));
 	
 	kvVault.Rewind();
 	
@@ -1435,47 +1461,35 @@ public void ReFillWeapon(int iClient, int iWeapon)
 	}
 }
 
-public void RemoveBot()
-{
-	if(GetRealClientCount(true, false, true) != 1)
-	{
-		ServerCommand("rcbotd kickbot");
-	}
-}
-
 public void SaveClient(int iClient)
 {
-	char sAuthID[64];
-	
-	GetClientAuthId(iClient, AuthId_Steam2, sAuthID, sizeof(sAuthID));
-	
 	KeyValues kvVault = new KeyValues("Credits");
 	
 	kvVault.ImportFromFile(g_sClientsDatabase);
 	
-	SaveInteger(kvVault, sAuthID, "all_deaths", g_iAllDeaths[iClient]);
-	SaveInteger(kvVault, sAuthID, "all_generic", g_iAllGeneric[iClient]);
-	SaveInteger(kvVault, sAuthID, "all_headshots", g_iAllHeadshots[iClient]);
-	SaveInteger(kvVault, sAuthID, "all_healthboosts", g_iAllHealthBoosts[iClient]);
-	SaveInteger(kvVault, sAuthID, "all_hitbot", g_iAllHitBot[iClient]);
-	SaveInteger(kvVault, sAuthID, "all_kills", g_iAllKills[iClient]);
-	SaveInteger(kvVault, sAuthID, "all_perfectmaps", g_iAllPerfectMaps[iClient]);
-	SaveInteger(kvVault, sAuthID, "all_suicides", g_iAllSuicides[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "all_deaths", g_iAllDeaths[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "all_generic", g_iAllGeneric[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "all_headshots", g_iAllHeadshots[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "all_healthboosts", g_iAllHealthBoosts[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "all_hitbot", g_iAllHitBot[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "all_kills", g_iAllKills[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "all_perfectmaps", g_iAllPerfectMaps[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "all_suicides", g_iAllSuicides[iClient]);
 	
-	SaveInteger(kvVault, sAuthID, "credits", g_iCredits[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "credits", g_iCredits[iClient]);
 	
-	SaveString(kvVault, sAuthID, "default_weapon", g_sDefaultWeapon[iClient]);
+	SaveString(kvVault, g_sAuthID[iClient], "default_weapon", g_sDefaultWeapon[iClient]);
 	
-	SaveInteger(kvVault, sAuthID, "jump_boost", view_as<int>(g_bJumpBoost[iClient][0]));
-	SaveInteger(kvVault, sAuthID, "previous_jb_setting", view_as<int>(g_bJumpBoost[iClient][1]));
+	SaveInteger(kvVault, g_sAuthID[iClient], "jump_boost", view_as<int>(g_bJumpBoost[iClient][0]));
+	SaveInteger(kvVault, g_sAuthID[iClient], "previous_jb_setting", view_as<int>(g_bJumpBoost[iClient][1]));
 	
-	SaveInteger(kvVault, sAuthID, "long_jump", view_as<int>(g_bLongJump[iClient][0]));
-	SaveInteger(kvVault, sAuthID, "previous_lj_setting", view_as<int>(g_bLongJump[iClient][1]));
+	SaveInteger(kvVault, g_sAuthID[iClient], "long_jump", view_as<int>(g_bLongJump[iClient][0]));
+	SaveInteger(kvVault, g_sAuthID[iClient], "previous_lj_setting", view_as<int>(g_bLongJump[iClient][1]));
 	
-	SaveString(kvVault, sAuthID, "nickname_color", g_sNicknameColor[iClient]);
-	SaveString(kvVault, sAuthID, "nickname_text", g_sNicknameText[iClient]);
+	SaveString(kvVault, g_sAuthID[iClient], "nickname_color", g_sNicknameColor[iClient]);
+	SaveString(kvVault, g_sAuthID[iClient], "nickname_text", g_sNicknameText[iClient]);
 	
-	SaveString(kvVault, sAuthID, "player_model", g_sModelName[iClient]);
+	SaveString(kvVault, g_sAuthID[iClient], "player_model", g_sModelName[iClient]);
 	
 	kvVault.ExportToFile(g_sClientsDatabase);
 	
@@ -1582,14 +1596,6 @@ public bool SetPlayerModel(int iClient, char[] sModelName)
 	return true;
 }
 
-public void SpawnBot()
-{
-	if(GetRealClientCount(true, false, true) == 1)
-	{
-		ServerCommand("rcbotd addbot");
-	}
-}
-
 //SDKHooks
 public Action Hook_OnTakeDamage(int iClient, int &iAttacker, int &iInflictor, float &fDamage, int &iDamagetype)
 {
@@ -1639,12 +1645,7 @@ public void Hook_TraceAttackPost(int iVictim, int iAttacker, int iInflictor, flo
 	
 	Client_GetWeapon(iVictim, sWeapon);
 	
-	if(StrEqual(sWeapon, "weapon_crossbow"))
-	{
-		g_iHitgroup[iVictim] = HITGROUP_HEAD;
-	}else{
-		g_iHitgroup[iVictim] = iHitgroup;
-	}
+	g_iHitgroup[iVictim] = iHitgroup;
 	
 	//PrintToChatAll("%N's Hitgroup: %i", iVictim, iHitgroup);
 }
@@ -1754,7 +1755,7 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 			g_iAllDeaths[iClient]++;
 			
 			CPrintToChatAll("{%s}%N{default} got killed by the world... somehow.", sClientColor, iClient);
-		}else if(g_iHitgroup[iClient] < 0 || g_iHitgroup[iClient] > 7)
+		}else if(g_iHitgroup[iClient] > 0/* || g_iHitgroup[iClient] > 7*/)
 		{
 			switch(g_iHitgroup[iClient])
 			{
@@ -2005,7 +2006,7 @@ public Action Event_PlayerSpawn(Event eEvent, char[] sName, bool bDontBroadcast)
 	SetEntityHealth(iClient, g_iStartHealth);
 }
 
-public Action Event_RoundEnd(Event eEvent, char[] sName, bool bDontBroadcast)
+public Action Event_GameEnd(Event eEvent, char[] sName, bool bDontBroadcast)
 {
 	char sMap[128], sMessage[MAX_MESSAGE_LENGTH];
 	int iClient = GetClientOfUserId(eEvent.GetInt("winner"));
