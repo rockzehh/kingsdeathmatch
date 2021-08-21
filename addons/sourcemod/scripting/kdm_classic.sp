@@ -70,6 +70,7 @@ bool g_bPrivateMatchRunning;
 bool g_bPrivateMatches;
 bool g_bProtection[MAXPLAYERS + 1];
 bool g_bRPG;
+bool g_bShowDeathHealth[MAXPLAYERS + 1];
 bool g_bZoom[MAXPLAYERS + 1];
 
 char g_sAdvertisementsDatabase[PLATFORM_MAX_PATH];
@@ -159,6 +160,7 @@ int g_iClip_Sizes[] =
 };
 int g_iCredits[MAXPLAYERS + 1];
 int g_iCrowbarDamage;
+int g_iCustomNickColor[MAXPLAYERS + 1];
 int g_iDeaths[MAXPLAYERS + 1];
 int g_iFOV;
 int g_iHeadshots[MAXPLAYERS + 1];
@@ -177,10 +179,13 @@ int g_iUpgrade_Prices[] =
 	2000, //Jetpack
 	25000, //Colored Nicknames
 };
+int g_iZoomStatus[MAXPLAYERS + 1];
+enum(+=1) { ZOOM_NONE, ZOOM_XBOW, ZOOM_SUIT, ZOOM_TOGL, FIRSTPERSON }
 
 KeyValues g_kvAdvertisements;
 
 StringMap g_smDeaths;
+StringMap g_smHeadshots;
 StringMap g_smKills;
 
 //Plugin Information
@@ -218,13 +223,13 @@ public void OnPluginStart()
 	g_cvEnableLongJump = CreateConVar("kdm_longjump_enable", "1", "Decides if the long jump module is enabled.", _, true, 0.1, true, 1.0);
 	g_cvEnableModelChanger = CreateConVar("kdm_player_model_change", "1", "Decides if the player can change their model.", _, true, 0.1, true, 1.0);
 	g_cvEnableSourceTVDemos = CreateConVar("kdm_demos_enable", "1", "Decides if the SourceTV demo recording is enabled.", _, true, 0.1, true, 1.0);
-	g_cvFallingFix = CreateConVar("kdm_player_tposefix", "0", "Decides if to fix the T-Pose falling glitch.", _, true, 0.1, true, 1.0);
+	g_cvFallingFix = CreateConVar("kdm_player_tposefix", "1", "Decides if to fix the T-Pose falling glitch.", _, true, 0.1, true, 1.0);
 	g_cvFOV = CreateConVar("kdm_player_custom_fov", "115", "The custom FOV value.");
 	g_cvHalfDamage = CreateConVar("kdm_player_alternatedamage", "1", "Decides if the players have alternate damage.", _, true, 0.1, true, 1.0);
 	g_cvHealthBoost = CreateConVar("kdm_healthboost_amount", "75", "The amount of health the health boost will do.");
 	g_cvHealthModifier = CreateConVar("kdm_player_damage_modifier", "0.5", "Damage modifier. A better description will be added.");
-	g_cvJumpBoost = CreateConVar("kdm_jumpboost_amount", "500.0", "The added jump velocity.");
-	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "700.0", "The amount of force that the long jump does.");
+	g_cvJumpBoost = CreateConVar("kdm_jumpboost_amount", "600.0", "The added jump velocity.");
+	g_cvLongJumpPush = CreateConVar("kdm_longjump_push_force", "750.0", "The amount of force that the long jump does.");
 	g_cvLongJumpSound = CreateConVar("kdm_longjump_play_sound", "1", "Decides if to play the long jump sound.", _, true, 0.1, true, 1.0);
 	g_cvEnableNickname = CreateConVar("kdm_nickname_enable", "1", "Decides if nicknames are enabled.", _, true, 0.1, true, 1.0);
 	g_cvNoFallDamage = CreateConVar("kdm_player_nofalldamage", "1", "Decides if to disable fall damage.", _, true, 0.1, true, 1.0);
@@ -234,7 +239,7 @@ public void OnPluginStart()
 	g_cvSourceTV[1] = FindConVar("tv_autorecord");
 	g_cvSourceTV[2] = FindConVar("tv_maxclients");
 	g_cvSpawnRPG = CreateConVar("kdm_wep_allow_rpg", "0", "Decides if the RPG is allowed to spawn.", _, true, 0.1, true, 1.0);
-	g_cvStartFOV = CreateConVar("kdm_player_start_fov", "20", "The custom start animation FOV value.");
+	g_cvStartFOV = CreateConVar("kdm_player_start_fov", "50", "The custom start animation FOV value.");
 	g_cvStartHealth = CreateConVar("kdm_player_start_health", "175", "The start player health.");
 	g_cvUpgradePriceHealthBoost = CreateConVar("kdm_healthboost_price", "350", "The amount of credits you need to pay to use the health boost.");
 	g_cvUpgradePriceInvisibility = CreateConVar("kdm_invisible_price", "500", "The amount of credits you need to pay to use the invisible effect.");
@@ -341,17 +346,19 @@ public void OnPluginStart()
 		g_bEnableModelChanger = false;
 	}
 	
-	HookEvent("game_end", Event_GameEnd);
+	HookEvent("game_end", Event_GameEnd, EventHookMode_Pre);
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_spawn", Event_PlayerSpawn);
 	
 	AddCommandListener(Handle_Chat, "say");
 	AddCommandListener(Handle_Chat, "say_team");
+	AddCommandListener(OnClientToggleZoom, "toggle_zoom");
 	
 	//Custom admin shit flag is Admin_Custom4.
 	
 	RegAdminCmd("dev_gmode", Dev_GodMode, view_as<int>(Admin_Custom4), "Gives the player god mode. This is for development purposes ONLY.");
 	RegAdminCmd("sm_setcredits", Command_SetCredits, view_as<int>(Admin_Custom4), "Changes the players credits.");
+	RegAdminCmd("sm_setnickcolor", Command_SetNickColor, view_as<int>(Admin_Custom4), "Changes the players nickname color, support for custom ones..");
 	RegAdminCmd("sm_setnickname", Command_SetNickname, view_as<int>(Admin_Custom4), "Sets the player nickname.");
 	
 	RegConsoleCmd("sm_boost", Command_HealthBoost, "Adds a boost of health.");
@@ -375,6 +382,7 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_playermodel", Command_PlayerModel, "Changes your player model.");
 	RegConsoleCmd("sm_private", Command_PrivateMatch, "Sets the match to private with a password.");
 	RegConsoleCmd("sm_privatematch", Command_PrivateMatch, "Sets the match to private with a password.");
+	RegConsoleCmd("sm_showdeathhealth", Command_ShowDeathHealth, "Changes if the player sees the attackers health in the death message.");
 	RegConsoleCmd("sm_store", Command_Credits, "Brings up the credit menu.");
 	
 	for (int i = 1; i < MaxClients; i++)
@@ -391,6 +399,7 @@ public void OnPluginStart()
 	}
 	
 	g_smDeaths = CreateTrie();
+	g_smHeadshots = CreateTrie();
 	g_smKills = CreateTrie();
 	
 	g_kvAdvertisements = new KeyValues("Advertisements");
@@ -441,6 +450,7 @@ public void OnMapStart()
 	GetCurrentMap(g_sMap, sizeof(g_sMap));
 	
 	g_smDeaths.Clear();
+	g_smHeadshots.Clear();
 	g_smKills.Clear();
 	
 	g_hAdvertisements = CreateTimer(45.0, Timer_Advertisement, _, TIMER_REPEAT);
@@ -463,6 +473,7 @@ public void OnMapEnd()
 	}
 	
 	g_smDeaths.Clear();
+	g_smHeadshots.Clear();
 	g_smKills.Clear();
 	
 	g_bPrivateMatchRunning = StrEqual(g_sServerPassword, "") ? false : true;
@@ -470,13 +481,18 @@ public void OnMapEnd()
 
 public void OnClientPutInServer(int iClient)
 {
-	int iDeaths, iKills;
+	int iDeaths, iHeadshots, iKills;
 	
 	GetClientAuthId(iClient, AuthId_Steam2, g_sAuthID[iClient], sizeof(g_sAuthID[]));
 	
 	if(g_smDeaths.GetValue(g_sAuthID[iClient], iDeaths))
 	{
 		Client_SetDeaths(iClient, iDeaths);
+	}
+	
+	if(g_smHeadshots.GetValue(g_sAuthID[iClient], iHeadshots))
+	{
+		g_iHeadshots[iClient] = iHeadshots;
 	}
 	
 	if(g_smKills.GetValue(g_sAuthID[iClient], iKills))
@@ -528,6 +544,8 @@ public void OnClientPutInServer(int iClient)
 	
 	SetClientNickname(iClient);
 	
+	SetNicknameColor(iClient, g_sNicknameColor[iClient], g_iCustomNickColor[iClient]);
+	
 	SetPlayerFOV(iClient, true);
 	
 	CreateTimer(0.1, Timer_ModelChanger, iClient);
@@ -538,8 +556,9 @@ public void OnClientDisconnect(int iClient)
 	if(g_bPlayer[iClient])
 	{
 		g_smDeaths.SetValue(g_sAuthID[iClient], Client_GetDeaths(iClient));
+		g_smHeadshots.SetValue(g_sAuthID[iClient], g_iHeadshots[iClient]);
 		g_smKills.SetValue(g_sAuthID[iClient], Client_GetScore(iClient));
-	
+		
 		g_bDev[iClient] = false;
 		g_bInvisibility[iClient] = false;
 		g_bInZoom[iClient] = false;
@@ -690,7 +709,7 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 		
 		if(StrEqual(sWeaponClass, "weapon_shotgun") && (iButtons & IN_ATTACK2) == IN_ATTACK2)
 		{
-			iButtons |= IN_ATTACK;              
+			iButtons |= IN_ATTACK;
 		}
 	}
 	
@@ -701,7 +720,7 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 			g_fLastCombineBallTime[iClient] = GetGameTime();
 		}else{
 			/*PrecacheSound("buttons/combine_button_locked.wav");
-	
+
 			EmitSoundToClient(iClient, "buttons/combine_button_locked.wav", iClient, 2, 150, 0, 0.1, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);*/
 			
 			if (iButtons & IN_ATTACK2)
@@ -1221,6 +1240,53 @@ public Action Command_PrivateMatch(int iClient, int iArgs)
 	}
 }
 
+public Action Command_SetNickColor(int iClient, int iArgs)
+{
+	if(iArgs < 2)
+	{
+		CReplyToCommand(iClient, "[{red}KINGS{default}] {green}sm_setnickcolor{default} <player> <color> <hex (ex. 0xRRGGBB)>");
+		
+		return Plugin_Handled;
+	}
+	
+	char sColor[64], sHex[64], sPlayer[MAX_NAME_LENGTH];
+	
+	GetCmdArg(1, sPlayer, sizeof(sPlayer));
+	GetCmdArg(2, sColor, sizeof(sColor));
+	GetCmdArg(3, sHex, sizeof(sHex));
+	
+	int iPlayer = FindTarget(iClient, sPlayer, true, false);
+	
+	if(iPlayer == -1)
+	{
+		CReplyToCommand(iClient, "[{red}KINGS{default}] Player {green}%s{default} cannot be found.", sPlayer);
+		
+		return Plugin_Handled;
+	}
+	
+	if(!CColorExists(sColor) && StrEqual(sHex, ""))
+	{
+		CReplyToCommand(iClient, "[{red}KINGS{default}] Color {green}%s{default} is not in the database. Please use a {green}HEX{default} color code to add a new color.", sPlayer);
+		
+		return Plugin_Handled;
+	}
+	
+	if(g_bEnableNickname || g_bEnableColorNickname)
+	{
+		SetNicknameColor(iClient, sColor, StringToInt(sHex));
+		
+		SaveClient(iPlayer);
+		
+		CReplyToCommand(iClient, "[{red}KINGS{default}] Set {green}%N{default}'s nickname color to {%s}%s{default}.", iPlayer, sColor, sColor);
+		
+		return Plugin_Handled;
+	}else{
+		CReplyToCommand(iClient, "[{red}KINGS{default}] Nicknames are disabled.");
+		
+		return Plugin_Handled;
+	}
+}
+
 public Action Command_SetNickname(int iClient, int iArgs)
 {
 	if(iArgs < 2)
@@ -1272,6 +1338,17 @@ public Action Command_SetNickname(int iClient, int iArgs)
 	}
 }
 
+public Action Command_ShowDeathHealth(int iClient, int iArgs)
+{
+	g_bShowDeathHealth[iClient] = !g_bShowDeathHealth[iClient];
+	
+	SaveClient(iClient);
+	
+	CReplyToCommand(iClient, "[{red}KINGS{default}] Displaying attackers health on death is {%s}%s{default}.", g_bShowDeathHealth[iClient] ? "green" : "red", g_bShowDeathHealth[iClient] ? "enabled" : "disabled");
+	
+	return Plugin_Handled;
+}
+
 public Action Handle_Chat(int iClient, char[] sCommand, int iArgs)
 {
 	char sColor[128], sFullMessage[MAX_MESSAGE_LENGTH], sMessage[MAX_MESSAGE_LENGTH];
@@ -1295,11 +1372,17 @@ public Action Handle_Chat(int iClient, char[] sCommand, int iArgs)
 	}
 }
 
-public Action Handle_Zoom(int iClient, char[] sCommand, int iArgs)
+public Action OnClientToggleZoom(int iClient, const char[] sCommand, int iArgs)
 {
-	SetPlayerFOV(iClient, false);
-	
-	return Plugin_Continue;
+	if(g_iZoomStatus[iClient] != ZOOM_NONE)
+	{
+		if(g_iZoomStatus[iClient] == ZOOM_TOGL || g_iZoomStatus[iClient] == ZOOM_SUIT)
+		{
+			g_iZoomStatus[iClient] = ZOOM_NONE;
+		}
+	}else{
+		g_iZoomStatus[iClient] = ZOOM_TOGL;
+	}
 }
 
 //Plugin Stocks/Extra Voids
@@ -1381,9 +1464,12 @@ public void LoadClient(int iClient)
 	g_bLongJump[iClient][1] = view_as<bool>(LoadInteger(kvVault, g_sAuthID[iClient], "previous_lj_setting", 0));
 	
 	LoadString(kvVault, g_sAuthID[iClient], "nickname_color", "", g_sNicknameColor[iClient], sizeof(g_sNicknameColor));
+	g_iCustomNickColor[iClient] = LoadInteger(kvVault, g_sAuthID[iClient], "nickname_custom_color", 0xFFFFFF);
 	LoadString(kvVault, g_sAuthID[iClient], "nickname_text", "", g_sNicknameText[iClient], sizeof(g_sNicknameText));
 	
 	LoadString(kvVault, g_sAuthID[iClient], "player_model", "", g_sModelName[iClient], sizeof(g_sModelName));
+	
+	g_bShowDeathHealth[iClient] = view_as<bool>(LoadInteger(kvVault, g_sAuthID[iClient], "show_deathmsg_health", 1));
 	
 	kvVault.Rewind();
 	
@@ -1487,9 +1573,12 @@ public void SaveClient(int iClient)
 	SaveInteger(kvVault, g_sAuthID[iClient], "previous_lj_setting", view_as<int>(g_bLongJump[iClient][1]));
 	
 	SaveString(kvVault, g_sAuthID[iClient], "nickname_color", g_sNicknameColor[iClient]);
+	SaveInteger(kvVault, g_sAuthID[iClient], "nickname_custom_color", g_iCustomNickColor[iClient]);
 	SaveString(kvVault, g_sAuthID[iClient], "nickname_text", g_sNicknameText[iClient]);
 	
 	SaveString(kvVault, g_sAuthID[iClient], "player_model", g_sModelName[iClient]);
+	
+	SaveInteger(kvVault, g_sAuthID[iClient], "show_deathmsg_health", view_as<int>(g_bShowDeathHealth[iClient]));
 	
 	kvVault.ExportToFile(g_sClientsDatabase);
 	
@@ -1544,6 +1633,19 @@ public void SetClientNickname(int iClient)
 	}
 	
 	SetClientName(iClient, sName);
+}
+
+public void SetNicknameColor(int iClient, char[] sColor, int iColor)
+{
+	if(CColorExists(sColor))
+	{
+		Format(g_sNicknameColor[iClient], sizeof(g_sNicknameColor[]), sColor);
+	}else{
+		CAddColor(sColor, iColor);
+		
+		Format(g_sNicknameColor[iClient], sizeof(g_sNicknameColor[]), sColor);
+		g_iCustomNickColor[iClient] = iColor;
+	}
 }
 
 public void SetPlayerFOV(int iClient, bool bFirstJoin)
@@ -1734,7 +1836,7 @@ public Action Event_PlayerClass(Event eEvent, char[] sName, bool bDontBroadcast)
 
 public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 {
-	char sAttackerColor[MAX_NAME_LENGTH], sClientColor[MAX_NAME_LENGTH], sWeapon[128];
+	char sAttackerColor[MAX_NAME_LENGTH], sAttackerHealth[2][64], sClientColor[MAX_NAME_LENGTH], sWeapon[128];
 	
 	int iAttacker = GetClientOfUserId(eEvent.GetInt("attacker"));
 	int iClient = GetClientOfUserId(eEvent.GetInt("userid"));
@@ -1757,15 +1859,18 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 			CPrintToChatAll("{%s}%N{default} got killed by the world... somehow.", sClientColor, iClient);
 		}else if(g_iHitgroup[iClient] > 0/* || g_iHitgroup[iClient] > 7*/)
 		{
+			Format(sAttackerHealth[0], sizeof(sAttackerHealth[]), "({green}%i{default} hp, {green}%i{default} suit) ", GetClientHealth(iAttacker), GetClientArmor(iAttacker));
+			Format(sAttackerHealth[1], sizeof(sAttackerHealth[]), "%s", g_bShowDeathHealth[iClient] ? sAttackerHealth[0] : "");
+			
 			switch(g_iHitgroup[iClient])
 			{
 				case HITGROUP_GENERIC:
 				{
-					iRandom = GetRandomInt(11, 24);
+					iRandom = GetRandomInt(30, 38);
 					
 					g_iAllDeaths[iClient]++;
 					g_iAllKills[iAttacker]++;
-					g_iAllGeneric[iClient]++;
+					g_iAllGeneric[iAttacker]++;
 					
 					g_iCredits[iAttacker] += iRandom;
 					
@@ -1773,28 +1878,28 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for killing {%s}%N{default}.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for killing {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for fucking obliterating {%s}%N{default}.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for fucking obliterating {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 2:
 						{
-							CPrintToChatAll("{%s}%N{default} fucking creamed {%s}%N{default}. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %sfucking creamed {%s}%N{default}. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
-					}	
+					}
 				}
 				case HITGROUP_HEAD:
 				{
-					iRandom = GetRandomInt(21, 33);
+					iRandom = GetRandomInt(70, 80);
 					
 					g_iAllDeaths[iClient]++;
-					g_iAllHeadshots[iClient]++;
+					g_iAllHeadshots[iAttacker]++;
 					g_iAllKills[iAttacker]++;
-					g_iHeadshots[iClient]++;
+					g_iHeadshots[iAttacker]++;
 					
 					g_iCredits[iAttacker] += iRandom;
 					
@@ -1802,23 +1907,23 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for shooting {%s}%N{default} in the head.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for shooting {%s}%N{default} in the head.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for blowing {%s}%N{default}'s fucking brains out.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for blowing {%s}%N{default}'s fucking brains out.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 2:
 						{
-							CPrintToChatAll("{%s}%N{default} blew a hole through {%s}%N{default}'s head. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %sblew a hole through {%s}%N{default}'s head. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
 				case HITGROUP_CHEST:
 				{
-					iRandom = GetRandomInt(13, 20);
+					iRandom = GetRandomInt(55, 60);
 					
 					g_iAllDeaths[iClient]++;
 					g_iAllKills[iAttacker]++;
@@ -1829,18 +1934,18 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for breaking {%s}%N{default}'s heart. </3", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for breaking {%s}%N{default}'s heart. </3", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} stole {%s}%N{default}'s torso. :( ({green}+%i{default} credits)", sAttackerColor, iAttacker, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %sstole {%s}%N{default}'s torso. :( ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
 				case HITGROUP_STOMACH:
 				{
-					iRandom = GetRandomInt(9, 18);
+					iRandom = GetRandomInt(40, 48);
 					
 					g_iAllDeaths[iClient]++;
 					g_iAllKills[iAttacker]++;
@@ -1851,23 +1956,23 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for busting {%s}%N{default}'s gut.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for busting {%s}%N{default}'s gut.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for reliefing {%s}%N{default} of gas.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for reliefing {%s}%N{default} of gas.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 2:
 						{
-							CPrintToChatAll("{%s}%N{default} stole {%s}%N{default}'s stomach. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %sstole {%s}%N{default}'s stomach. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
 				case HITGROUP_LEFTARM:
 				{
-					iRandom = GetRandomInt(14, 26);
+					iRandom = GetRandomInt(20, 30);
 					
 					g_iAllDeaths[iClient]++;
 					g_iAllKills[iAttacker]++;
@@ -1878,18 +1983,18 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for breaking {%s}%N{default}'s useless hand.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for breaking {%s}%N{default}'s useless hand.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} stole {%s}%N{default}'s left arm. Guess he didn't need it anyways.. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %sstole {%s}%N{default}'s left arm. Guess he didn't need it anyways.. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
 				case HITGROUP_RIGHTARM:
 				{
-					iRandom = GetRandomInt(8, 18);
+					iRandom = GetRandomInt(22, 30);
 					
 					g_iAllDeaths[iClient]++;
 					g_iAllKills[iAttacker]++;
@@ -1900,43 +2005,44 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for stealing {%s}%N{default}'s magic hand.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for stealing {%s}%N{default}'s magic hand.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} broke {%s}%N{default}'s middle finger. What a dick.. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %sbroke {%s}%N{default}'s middle finger. What a dick.. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
 				case HITGROUP_LEFTLEG:
 				{
-					iRandom = GetRandomInt(19, 28);
+					iRandom = GetRandomInt(24, 35);
 					
 					g_iAllDeaths[iClient]++;
 					g_iAllKills[iAttacker]++;
 					
 					g_iCredits[iAttacker] += iRandom;
 					
-					CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for breaking {%s}%N{default}'s left leg.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+					CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for breaking {%s}%N{default}'s left leg.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 				}
 				case HITGROUP_RIGHTLEG:
 				{
-					iRandom = GetRandomInt(19, 28);
+					iRandom = GetRandomInt(23, 34);
 					
 					g_iAllDeaths[iClient]++;
 					g_iAllKills[iAttacker]++;
 					
 					g_iCredits[iAttacker] += iRandom;
 					
-					CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for breaking {%s}%N{default}'s right leg.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+					CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for breaking {%s}%N{default}'s right leg.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 				}
 			}
 		}else{
-			iRandom = GetRandomInt(11, 24);
+			iRandom = GetRandomInt(30, 38);
 			
 			g_iAllDeaths[iClient]++;
 			g_iAllKills[iAttacker]++;
+			g_iAllGeneric[iAttacker]++;
 			
 			g_iCredits[iAttacker] += iRandom;
 			
@@ -1944,26 +2050,26 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 			{
 				case 0:
 				{
-					CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for killing {%s}%N{default}.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+					CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for killing {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 				}
 				
 				case 1:
 				{
-					CPrintToChatAll("{%s}%N{default} got {green}+%i{default} credits for fucking obliterating {%s}%N{default}.", sAttackerColor, iAttacker, iRandom, sClientColor, iClient);
+					CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for fucking obliterating {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 				}
 				
 				case 2:
 				{
-					CPrintToChatAll("{%s}%N{default} fucking creamed {%s}%N{default}. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sClientColor, iClient, iRandom);
+					CPrintToChatAll("{%s}%N{default} %sfucking creamed {%s}%N{default}. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 				}
-			}	
+			}
 		}
 	}else{
 		g_iAllDeaths[iClient]++;
 		g_iAllKills[iClient]--;
 		g_iAllSuicides[iClient]++;
 		
-		iRandom = GetRandomInt(3, 8);
+		iRandom = GetRandomInt(12, 19);
 		
 		g_iCredits[iClient] -= iRandom;
 		

@@ -741,6 +741,7 @@ stock Handle InitColorTrie()
 	SetTrieValue(hTrie, "lavender", 0xE6E6FA);
 	SetTrieValue(hTrie, "lavenderblush", 0xFFF0F5);
 	SetTrieValue(hTrie, "lawngreen", 0x7CFC00);
+	SetTrieValue(hTrie, "layla", 0xF93281);
 	SetTrieValue(hTrie, "legendary", 0xD32CE6); // same as Legendary item rarity in Dota 2
 	SetTrieValue(hTrie, "lemonchiffon", 0xFFFACD);
 	SetTrieValue(hTrie, "lightblue", 0xADD8E6);
