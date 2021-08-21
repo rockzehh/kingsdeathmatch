@@ -4,19 +4,17 @@
 #include "updater/download_curl.sp"
 #include "updater/download_socket.sp"
 #include "updater/download_steamtools.sp"
-#include "updater/download_steamworks.sp"
 
-DataPackPos QueuePack_URL;
+static DataPackPos:QueuePack_URL;
 
-void FinalizeDownload(int index)
+FinalizeDownload(index)
 {
 	/* Strip the temporary file extension from downloaded files. */
-	char newpath[PLATFORM_MAX_PATH];
-	char oldpath[PLATFORM_MAX_PATH];
-	Handle hFiles = Updater_GetFiles(index);
+	decl String:newpath[PLATFORM_MAX_PATH], String:oldpath[PLATFORM_MAX_PATH];
+	new Handle:hFiles = Updater_GetFiles(index);
 	
-	int maxFiles = GetArraySize(hFiles);
-	for (int i = 0; i < maxFiles; i++)
+	new maxFiles = GetArraySize(hFiles);
+	for (new i = 0; i < maxFiles; i++)
 	{
 		GetArrayString(hFiles, i, newpath, sizeof(newpath));
 		Format(oldpath, sizeof(oldpath), "%s.%s", newpath, TEMP_FILE_EXT);
@@ -33,14 +31,14 @@ void FinalizeDownload(int index)
 	ClearArray(hFiles);
 }
 
-void AbortDownload(int index)
+AbortDownload(index)
 {
 	/* Delete all downloaded temporary files. */
-	char path[PLATFORM_MAX_PATH];
-	Handle hFiles = Updater_GetFiles(index);
+	decl String:path[PLATFORM_MAX_PATH];
+	new Handle:hFiles = Updater_GetFiles(index);
 	
-	int maxFiles = GetArraySize(hFiles);
-	for (int i = 0; i < maxFiles; i++)
+	new maxFiles = GetArraySize(hFiles);
+	for (new i = 0; i < maxFiles; i++)
 	{
 		GetArrayString(hFiles, 0, path, sizeof(path));
 		Format(path, sizeof(path), "%s.%s", path, TEMP_FILE_EXT);
@@ -54,22 +52,19 @@ void AbortDownload(int index)
 	ClearArray(hFiles);
 }
 
-void ProcessDownloadQueue(bool force=false)
-{
-	if (!force && (g_bDownloading || !GetArraySize(g_hDownloadQueue)))
-	{
+ProcessDownloadQueue(bool:force=false) {
+	if (!force && (g_bDownloading || !GetArraySize(g_hDownloadQueue))) {
 		return;
 	}
 	
-	Handle hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
+	new Handle:hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
 	SetPackPosition(hQueuePack, QueuePack_URL);
 	
-	char url[MAX_URL_LENGTH];
-	char dest[PLATFORM_MAX_PATH];
+	decl String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH];
 	ReadPackString(hQueuePack, url, sizeof(url));
 	ReadPackString(hQueuePack, dest, sizeof(dest));
 	
-	if (!CURL_AVAILABLE() && !SOCKET_AVAILABLE() && !STEAMTOOLS_AVAILABLE() && !STEAMWORKS_AVAILABLE())
+	if (!CURL_AVAILABLE() && !SOCKET_AVAILABLE() && !STEAMTOOLS_AVAILABLE())
 	{
 		SetFailState(EXTENSION_ERROR);
 	}
@@ -82,48 +77,27 @@ void ProcessDownloadQueue(bool force=false)
 	
 	g_bDownloading = true;
 	
-	if (STEAMWORKS_AVAILABLE())
-	{
-		if (SteamWorks_IsLoaded())
-		{
-			Download_SteamWorks(url, dest);
-		}
-		else
-		{
-			CreateTimer(10.0, Timer_RetryQueue);
-		}
-	}
-	else if (STEAMTOOLS_AVAILABLE())
-	{
-		if (g_bSteamLoaded)
-		{
+	if (STEAMTOOLS_AVAILABLE()) {
+		if (g_bSteamLoaded) {
 			Download_SteamTools(url, dest);
-		}
-		else
-		{
+		} else {
 			CreateTimer(10.0, Timer_RetryQueue);
 		}
-	}
-	else if (CURL_AVAILABLE())
-	{
+	} else if (CURL_AVAILABLE()) {
 		Download_cURL(url, dest);
-	}
-	else if (SOCKET_AVAILABLE())
-	{
+	} else if (SOCKET_AVAILABLE()) {
 		Download_Socket(url, dest);
 	}
 }
 
-public Action Timer_RetryQueue(Handle timer)
-{
+public Action:Timer_RetryQueue(Handle:timer) {
 	ProcessDownloadQueue(true);
 	
 	return Plugin_Stop;
 }
 
-void AddToDownloadQueue(int index, const char[] url, const char[] dest)
-{
-	Handle hQueuePack = CreateDataPack();
+AddToDownloadQueue(index, const String:url[], const String:dest[]) {
+	new Handle:hQueuePack = CreateDataPack();
 	WritePackCell(hQueuePack, index);
 	
 	QueuePack_URL = GetPackPosition(hQueuePack);
@@ -135,14 +109,13 @@ void AddToDownloadQueue(int index, const char[] url, const char[] dest)
 	ProcessDownloadQueue();
 }
 
-void DownloadEnded(bool successful, const char[] error="")
+DownloadEnded(bool:successful, const String:error[]="")
 {
-	Handle hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
+	new Handle:hQueuePack = GetArrayCell(g_hDownloadQueue, 0);
 	ResetPack(hQueuePack);
 	
-	char url[MAX_URL_LENGTH];
-	char dest[PLATFORM_MAX_PATH];
-	int index = ReadPackCell(hQueuePack);
+	decl String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH];
+	new index = ReadPackCell(hQueuePack);
 	ReadPackString(hQueuePack, url, sizeof(url));
 	ReadPackString(hQueuePack, dest, sizeof(dest));
 	
@@ -176,20 +149,20 @@ void DownloadEnded(bool successful, const char[] error="")
 			if (successful)
 			{
 				// Check if this was the last file we needed.
-				char lastfile[PLATFORM_MAX_PATH];
-				Handle hFiles = Updater_GetFiles(index);
+				decl String:lastfile[PLATFORM_MAX_PATH];
+				new Handle:hFiles = Updater_GetFiles(index);
 				
 				GetArrayString(hFiles, GetArraySize(hFiles) - 1, lastfile, sizeof(lastfile));
 				Format(lastfile, sizeof(lastfile), "%s.%s", lastfile, TEMP_FILE_EXT);
 				
 				if (StrEqual(dest, lastfile))
 				{
-					Handle hPlugin = IndexToPlugin(index);
+					new Handle:hPlugin = IndexToPlugin(index);
 					
 					Fwd_OnPluginUpdating(hPlugin);
 					FinalizeDownload(index);
 					
-					char sName[64];
+					decl String:sName[64];
 					if (!GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName)))
 					{
 						strcopy(sName, sizeof(sName), "Null");
@@ -207,7 +180,7 @@ void DownloadEnded(bool successful, const char[] error="")
 				AbortDownload(index);
 				Updater_SetStatus(index, Status_Error);
 				
-				char filename[64];
+				decl String:filename[64];
 				GetPluginFilename(IndexToPlugin(index), filename, sizeof(filename));
 				Updater_Log("Error downloading update for plugin: %s", filename);
 				Updater_Log("  [0]  URL: %s", url);

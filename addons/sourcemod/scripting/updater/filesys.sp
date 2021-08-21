@@ -2,15 +2,15 @@
 /* File System Parsers */
 
 // Strip filename from path.
-void StripPathFilename(char[] path)
+StripPathFilename(String:path[])
 {
 	strcopy(path, FindCharInString(path, '/', true) + 1, path);
 }
 
 // Return the filename and extension from a given path.
-void GetPathBasename(char[] path, char[] buffer, int maxlength)
+GetPathBasename(String:path[], String:buffer[], maxlength)
 {
-	int check = -1;
+	new check = -1;
 	if ((check = FindCharInString(path, '/', true)) != -1 ||
 		(check = FindCharInString(path, '\\', true)) != -1)
 	{
@@ -23,7 +23,7 @@ void GetPathBasename(char[] path, char[] buffer, int maxlength)
 }
 
 // Add http protocol to url if it's missing.
-void PrefixURL(char[] buffer, int maxlength, const char[] url)
+PrefixURL(String:buffer[], maxlength, const String:url[])
 {
 	if (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0)
 	{
@@ -36,21 +36,21 @@ void PrefixURL(char[] buffer, int maxlength, const char[] url)
 }
 
 // Split URL into hostname, location, and filename. No trailing slashes.
-void ParseURL(const char[] url, char[] host, int maxHost, char[] location, int maxLoc, char[] filename, int maxName)
+ParseURL(const String:url[], String:host[], maxHost, String:location[], maxLoc, String:filename[], maxName)
 {
 	// Strip url prefix.
-	int idx = StrContains(url, "://");
+	new idx = StrContains(url, "://");
 	idx = (idx != -1) ? idx + 3 : 0;
 	
-	char dirs[16][64];
-	int total = ExplodeString(url[idx], "/", dirs, sizeof(dirs), sizeof(dirs[]));
+	decl String:dirs[16][64];
+	new total = ExplodeString(url[idx], "/", dirs, sizeof(dirs), sizeof(dirs[]));
 	
 	// host
 	Format(host, maxHost, "%s", dirs[0]);
 	
 	// location
 	location[0] = '\0';
-	for (int i = 1; i < total - 1; i++)
+	for (new i = 1; i < total - 1; i++)
 	{
 		Format(location, maxLoc, "%s/%s", location, dirs[i]);
 	}
@@ -60,10 +60,10 @@ void ParseURL(const char[] url, char[] host, int maxHost, char[] location, int m
 }
 
 // Converts Updater SMC file paths into paths relative to the game folder.
-void ParseSMCPathForLocal(const char[] path, char[] buffer, int maxlength)
+ParseSMCPathForLocal(const String:path[], String:buffer[], maxlength)
 {
-	char dirs[16][64];
-	int total = ExplodeString(path, "/", dirs, sizeof(dirs), sizeof(dirs[]));
+	decl String:dirs[16][64];
+	new total = ExplodeString(path, "/", dirs, sizeof(dirs), sizeof(dirs[]));
 	
 	if (StrEqual(dirs[0], "Path_SM"))
 	{
@@ -75,7 +75,7 @@ void ParseSMCPathForLocal(const char[] path, char[] buffer, int maxlength)
 	}
 	
 	// Construct the path and create directories if needed.
-	for (int i = 1; i < total - 1; i++)
+	for (new i = 1; i < total - 1; i++)
 	{
 		Format(buffer, maxlength, "%s%s/", buffer, dirs[i]);
 
@@ -90,14 +90,14 @@ void ParseSMCPathForLocal(const char[] path, char[] buffer, int maxlength)
 }
 
 // Converts Updater SMC file paths into paths relative to the plugin's update URL.
-void ParseSMCPathForDownload(const char[] path, char[] buffer, int maxlength)
+ParseSMCPathForDownload(const String:path[], String:buffer[], maxlength)
 {
-	char dirs[16][64];
-	int total = ExplodeString(path, "/", dirs, sizeof(dirs), sizeof(dirs[]));
+	decl String:dirs[16][64];
+	new total = ExplodeString(path, "/", dirs, sizeof(dirs), sizeof(dirs[]));
 	
 	// Construct the path.
 	buffer[0] = '\0';
-	for (int i = 1; i < total; i++)
+	for (new i = 1; i < total; i++)
 	{
 		Format(buffer, maxlength, "%s/%s", buffer, dirs[i]);
 	}
@@ -106,38 +106,35 @@ void ParseSMCPathForDownload(const char[] path, char[] buffer, int maxlength)
 // Parses a plugin's update file.
 // Logs update notes and begins download if required.
 // Returns true if an update was available.
-static Handle SMC_Sections;
-static Handle SMC_DataTrie;
-static Handle SMC_DataPack;
-static int SMC_LineNum;
+static Handle:SMC_Sections;
+static Handle:SMC_DataTrie;
+static Handle:SMC_DataPack;
+static SMC_LineNum;
 
-bool ParseUpdateFile(int index, const char[] path)
-{
+bool:ParseUpdateFile(index, const String:path[]) {
 	/* Return true if an update was available. */
 	SMC_Sections = CreateArray(64);
 	SMC_DataTrie = CreateTrie();
 	SMC_DataPack = CreateDataPack();
 	SMC_LineNum = 0;
 	
-	Handle smc = SMC_CreateParser();
+	new Handle:smc = SMC_CreateParser();
 	
 	SMC_SetRawLine(smc, Updater_RawLine);
 	SMC_SetReaders(smc, Updater_NewSection, Updater_KeyValue, Updater_EndSection);
 	
-	char sBuffer[MAX_URL_LENGTH];
-	Handle hPack;
-	bool bUpdate = false;
-	SMCError err = SMC_ParseFile(smc, path);
+	decl String:sBuffer[MAX_URL_LENGTH], Handle:hPack;
+	new bool:bUpdate = false;
+	new SMCError:err = SMC_ParseFile(smc, path);
 	
-	if (err == SMCError_Okay)
-	{
+	if (err == SMCError_Okay) {
 		// Initialize data
-		Handle hPlugin = IndexToPlugin(index);
-		Handle hFiles = Updater_GetFiles(index);
+		new Handle:hPlugin = IndexToPlugin(index);
+		new Handle:hFiles = Updater_GetFiles(index);
 		ClearArray(hFiles);
 		
 		// current version.
-		char sCurrentVersion[16];
+		decl String:sCurrentVersion[16];
 		
 		if (!GetPluginInfo(hPlugin, PlInfo_Version, sCurrentVersion, sizeof(sCurrentVersion)))
 		{
@@ -145,7 +142,7 @@ bool ParseUpdateFile(int index, const char[] path)
 		}
 		
 		// latest version.
-		char smcLatestVersion[16];
+		new String:smcLatestVersion[16];
 		
 		if (GetTrieValue(SMC_DataTrie, "version->latest", hPack))
 		{
@@ -156,8 +153,7 @@ bool ParseUpdateFile(int index, const char[] path)
 		// Check if we have the latest version.
 		if (!StrEqual(sCurrentVersion, smcLatestVersion))
 		{
-			char sFilename[64];
-			char sName[64];
+			decl String:sFilename[64], String:sName[64];
 			GetPluginFilename(hPlugin, sFilename, sizeof(sFilename));
 			
 			if (GetPluginInfo(hPlugin, PlInfo_Name, sName, sizeof(sName)))
@@ -173,7 +169,7 @@ bool ParseUpdateFile(int index, const char[] path)
 			{
 				ResetPack(hPack);
 				
-				int iCount = 0;
+				new iCount = 0;
 				while (IsPackReadable(hPack, 1))
 				{
 					ReadPackString(hPack, sBuffer, sizeof(sBuffer));
@@ -181,11 +177,19 @@ bool ParseUpdateFile(int index, const char[] path)
 				}
 			}
 			
+			if (GetTrieValue(SMC_DataTrie, "information->baseurl", hPack)) {
+				ResetPack(hPack);
+				new String:sBaseURL[MAX_URL_LENGTH];
+				ReadPackString(hPack, sBaseURL, sizeof(sBaseURL));
+				Updater_SetBaseURL(index, sBaseURL);
+				PrintToServer("[UPDATER] sBaseURL %s", sBaseURL);
+			}
+			
 			// Log update notes, save file list, and begin downloading.
 			if (g_bGetDownload && Fwd_OnPluginDownloading(hPlugin) == Plugin_Continue)
 			{
 				// Get previous version.
-				char smcPrevVersion[16];
+				new String:smcPrevVersion[16];
 				if (GetTrieValue(SMC_DataTrie, "version->previous", hPack))
 				{
 					ResetPack(hPack);
@@ -224,7 +228,7 @@ bool ParseUpdateFile(int index, const char[] path)
 		}
 		
 #if defined DEBUG
-		iCount = 0;
+		new iCount = 0;
 		
 		Updater_DebugLog(" ");
 		Updater_DebugLog("SMC DEBUG");
@@ -250,16 +254,13 @@ bool ParseUpdateFile(int index, const char[] path)
 		Updater_DebugLog("END SMC DEBUG");
 		Updater_DebugLog(" ");
 #endif
-	}
-	else
-	{
+	} else {
 		Updater_Log("SMC parsing error on line %d", SMC_LineNum);
-		
+
 		Updater_GetURL(index, sBuffer, sizeof(sBuffer));
 		Updater_Log("  [0]  URL: %s", sBuffer);
-		
-		if (SMC_GetErrorString(err, sBuffer, sizeof(sBuffer)))
-		{
+
+		if (SMC_GetErrorString(err, sBuffer, sizeof(sBuffer))) {
 			Updater_Log("  [1]  ERROR: %s", sBuffer);
 		}
 	}
@@ -285,15 +286,11 @@ bool ParseUpdateFile(int index, const char[] path)
 	return bUpdate;
 }
 
-void ParseSMCFilePack(int index, Handle hPack, Handle hFiles)
+ParseSMCFilePack(index, Handle:hPack, Handle:hFiles)
 {
 	// Prepare URL
-	char urlprefix[MAX_URL_LENGTH];
-	char url[MAX_URL_LENGTH];
-	char dest[PLATFORM_MAX_PATH];
-	char sBuffer[MAX_URL_LENGTH];
-	Updater_GetURL(index, urlprefix, sizeof(urlprefix));
-	StripPathFilename(urlprefix);
+	decl String:urlprefix[MAX_URL_LENGTH], String:url[MAX_URL_LENGTH], String:dest[PLATFORM_MAX_PATH], String:sBuffer[MAX_URL_LENGTH];
+	Updater_GetBaseURL(index, urlprefix, sizeof(urlprefix));
 
 	ResetPack(hPack);
 
@@ -303,14 +300,15 @@ void ParseSMCFilePack(int index, Handle hPack, Handle hFiles)
 		
 		// Merge url.
 		ParseSMCPathForDownload(sBuffer, url, sizeof(url));
+		PrintToServer("[UPDATER] url %s", url);
 		Format(url, sizeof(url), "%s%s", urlprefix, url);
+		PrintToServer("[UPDATER] url post-merge %s", url);
 		
 		// Make sure the current plugin path matches the update.
 		ParseSMCPathForLocal(sBuffer, dest, sizeof(dest));
+		PrintToServer("[UPDATER] dest %s", dest);
 		
-		char sLocalBase[64];
-		char sPluginBase[64];
-		char sFilename[64];
+		decl String:sLocalBase[64], String:sPluginBase[64], String:sFilename[64];
 		GetPathBasename(dest, sLocalBase, sizeof(sLocalBase));
 		GetPathBasename(sFilename, sPluginBase, sizeof(sPluginBase));
 		
@@ -331,23 +329,21 @@ void ParseSMCFilePack(int index, Handle hPack, Handle hFiles)
 	}
 }
 
-public SMCResult Updater_RawLine(Handle smc, const char[] line, int lineno)
+public SMCResult:Updater_RawLine(Handle:smc, const String:line[], lineno)
 {
 	SMC_LineNum = lineno;
 	return SMCParse_Continue;
 }
 
-public SMCResult Updater_NewSection(Handle smc, const char[] name, bool opt_quotes)
+public SMCResult:Updater_NewSection(Handle:smc, const String:name[], bool:opt_quotes)
 {
 	PushArrayString(SMC_Sections, name);
 	return SMCParse_Continue;
 }
 
-public SMCResult Updater_KeyValue(Handle smc, const char[] key, const char[] value, bool key_quotes, bool value_quotes)
+public SMCResult:Updater_KeyValue(Handle:smc, const String:key[], const String:value[], bool:key_quotes, bool:value_quotes)
 {
-	char sCurSection[MAX_URL_LENGTH];
-	char sKey[MAX_URL_LENGTH];
-	Handle hPack;
+	decl String:sCurSection[MAX_URL_LENGTH], String:sKey[MAX_URL_LENGTH], Handle:hPack;
 	
 	GetArrayString(SMC_Sections, GetArraySize(SMC_Sections)-1, sCurSection, sizeof(sCurSection));
 	FormatEx(sKey, sizeof(sKey), "%s->%s", sCurSection, key);
@@ -364,7 +360,7 @@ public SMCResult Updater_KeyValue(Handle smc, const char[] key, const char[] val
 	return SMCParse_Continue;
 }
 
-public SMCResult Updater_EndSection(Handle smc)
+public SMCResult:Updater_EndSection(Handle:smc)
 {
 	if (GetArraySize(SMC_Sections))
 	{
@@ -374,11 +370,11 @@ public SMCResult Updater_EndSection(Handle smc)
 	return SMCParse_Continue;
 }
 
-stock void StringToLower(char[] input)
+stock StringToLower(String:input[])
 {
-	int length = strlen(input);
+	new length = strlen(input);
 	
-	for (int i = 0; i < length; i++)
+	for (new i = 0; i < length; i++)
 	{
 		input[i] = CharToLower(input[i]);
 	}

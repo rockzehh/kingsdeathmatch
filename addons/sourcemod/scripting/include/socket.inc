@@ -200,9 +200,9 @@ enum SocketOption {
  * @param arg		The argument set by SocketSetArg()
  * @noreturn
  */
-typedef SocketConnectCB
+typeset SocketConnectCB
 {
-    public(Handle:socket, any:arg)
+    function void (Handle socket, any arg);
 };
 
 /**
@@ -216,9 +216,9 @@ typedef SocketConnectCB
  * @param any		arg			The argument set by SocketSetArg() for the listen-socket
  * @noreturn
  */
-typedef SocketIncomingCB
+typeset SocketIncomingCB
 {
-    public(Handle:socket, Handle:newSocket, const String:remoteIP[], remotePort, any:arg)
+    function void (Handle socket, Handle newSocket, const char[] remoteIP, int remotePort, any arg);
 };
 
 /**
@@ -235,9 +235,9 @@ typedef SocketIncomingCB
  * @param any		arg			The argument set by SocketSetArg() for the socket
  * @noreturn
  */
-typedef SocketReceiveCB
+typeset SocketReceiveCB
 {
-    public(Handle:socket, const String:receiveData[], const dataSize, any:arg)
+    function void (Handle socket, const char[] receiveData, const int dataSize, any arg);
 };
 
 /**
@@ -247,9 +247,9 @@ typedef SocketReceiveCB
  * @param any		arg			The argument set by SocketSetArg() for the socket
  * @noreturn
  */
-typedef SocketSendqueueEmptyCB
+typeset SocketSendqueueEmptyCB
 {
-    public(Handle:socket, any:arg)
+   function void (Handle socket, any arg);
 };
 
 /**
@@ -261,9 +261,9 @@ typedef SocketSendqueueEmptyCB
  * @param any		arg			The argument set by SocketSetArg() for the socket
  * @noreturn
  */
-typedef SocketDisconnectCB
+typeset SocketDisconnectCB
 {
-    public(Handle:socket, any:arg)
+   function void (Handle socket, any arg);
 };
 
 /**
@@ -277,9 +277,9 @@ typedef SocketDisconnectCB
  * @param any		arg			The argument set by SocketSetArg() for the socket
  * @noreturn
  */
-typedef SocketErrorCB
+typeset SocketErrorCB
 {
-    public(Handle:socket, const errorType, const errorNum, any:arg)
+    function void (Handle socket, const int errorType, const int errorNum, any arg);
 };
 
 
@@ -311,8 +311,7 @@ native Handle:SocketCreate(SocketType:protocol=SOCKET_TCP, SocketErrorCB:efunc);
 /**
  * Binds the socket to a local address
  *
- * @param Handle	socket		The handle of the socket to be used.
- * @param String	hostname	The hostname (or IP) to bind the socket to.
+ * @param Handle	socket		The handle of the socket to be used. * @param String	hostname	The hostname (or IP) to bind the socket to.
  * @param cell_t	port		The port to bind the socket to.
  * @return bool 				true on success
  */
@@ -328,8 +327,7 @@ native bool:SocketBind(Handle:socket, const String:hostname[], port);
  * @param Handle				socket		The handle of the socket to be used.
  * @param SocketConnectCB		cfunc		The connect callback
  * @param SocketReceiveCB		rfunc		The receive callback
- * @param SocketDisconnectCB	dfunc		The disconnect callback
- * @param String				hostname	The hostname (or IP) to connect to.
+ * @param SocketDisconnectCB	dfunc		The disconnect callback * @param String				hostname	The hostname (or IP) to connect to.
  * @param cell_t				port		The port to connect to.
  * @noreturn
  */
@@ -366,12 +364,10 @@ native bool:SocketListen(Handle:socket, SocketIncomingCB:ifunc);
  *
  * @param Handle	socket	The handle of the socket to be used.
  * @param String	data	The data to send.
- * @noreturn
- */
+ * @noreturn */
 native SocketSend(Handle:socket, const String:data[], size=-1);
 
-/**
- * Sends UDP data through the socket to a specific destination.
+/** * Sends UDP data through the socket to a specific destination.
  *
  * @note specify size for binary safe operation
  * @note if size is not specified the \0 terminator will not be included
@@ -384,8 +380,7 @@ native SocketSend(Handle:socket, const String:data[], size=-1);
  * @param String	data	The data to send.
  * @param String	hostname	The hostname (or IP) to send to.
  * @param cell_t	port		The port to send to.
- * @noreturn
- */
+ * @noreturn */
 native SocketSendTo(Handle:socket, const String:data[], size=-1, const String:hostname[], port);
 
 /**
@@ -394,8 +389,7 @@ native SocketSendTo(Handle:socket, const String:data[], size=-1, const String:ho
  * @param Handle		socket	The handle of the socket to be used. May be INVALID_HANDLE if not essential.
  * @param SocketOption	option	The option to modify (see enum SocketOption for details).
  * @param cellt_		value	The value to set the option to.
- * @return cell_t			1 on success.
- */
+ * @return cell_t			1 on success. */
 native SocketSetOption(Handle:socket, SocketOption:option, value);
 
 

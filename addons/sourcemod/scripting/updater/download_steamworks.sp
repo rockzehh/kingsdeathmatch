@@ -1,15 +1,15 @@
 
 /* Extension Helper - SteamWorks */
 
-void Download_SteamWorks(const char[] url, const char[] dest)
+Download_SteamWorks(const String:url[], const String:dest[])
 {
-	char sURL[MAX_URL_LENGTH];
+	decl String:sURL[MAX_URL_LENGTH];
 	PrefixURL(sURL, sizeof(sURL), url);
 	
-	Handle hDLPack = CreateDataPack();
+	new Handle:hDLPack = CreateDataPack();
 	WritePackString(hDLPack, dest);
 
-	Handle hRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, sURL);
+	new Handle:hRequest = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, sURL);
 	SteamWorks_SetHTTPRequestHeaderValue(hRequest, "Pragma", "no-cache");
 	SteamWorks_SetHTTPRequestHeaderValue(hRequest, "Cache-Control", "no-cache");
 	SteamWorks_SetHTTPCallbacks(hRequest, OnSteamWorksHTTPComplete);
@@ -17,9 +17,9 @@ void Download_SteamWorks(const char[] url, const char[] dest)
 	SteamWorks_SendHTTPRequest(hRequest);
 }
 
-public void OnSteamWorksHTTPComplete(Handle hRequest, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode, any hDLPack)
+public OnSteamWorksHTTPComplete(Handle:hRequest, bool:bFailure, bool:bRequestSuccessful, EHTTPStatusCode:eStatusCode, any:hDLPack)
 {
-	char sDest[PLATFORM_MAX_PATH];
+	decl String:sDest[PLATFORM_MAX_PATH];
 	ResetPack(hDLPack);
 	ReadPackString(hDLPack, sDest, sizeof(sDest));
 	CloseHandle(hDLPack);
@@ -31,8 +31,8 @@ public void OnSteamWorksHTTPComplete(Handle hRequest, bool bFailure, bool bReque
 	}
 	else
 	{
-		char sError[256];
-		FormatEx(sError, sizeof(sError), "SteamWorks error (status code %i). Request successful: %s", view_as<int>(eStatusCode), bRequestSuccessful ? "True" : "False");
+		decl String:sError[256];
+		FormatEx(sError, sizeof(sError), "SteamWorks error (status code %i). Request successful: %s", _:eStatusCode, bRequestSuccessful ? "True" : "False");
 		DownloadEnded(false, sError);
 	}
 	

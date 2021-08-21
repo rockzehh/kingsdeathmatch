@@ -1836,7 +1836,7 @@ public Action Event_PlayerClass(Event eEvent, char[] sName, bool bDontBroadcast)
 
 public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 {
-	char sAttackerColor[MAX_NAME_LENGTH], sAttackerHealth[2][64], sClientColor[MAX_NAME_LENGTH], sWeapon[128];
+	char sAttackerColor[MAX_NAME_LENGTH], sAttackerHealth[2][128], sClientColor[MAX_NAME_LENGTH], sWeapon[128];
 	
 	int iAttacker = GetClientOfUserId(eEvent.GetInt("attacker"));
 	int iClient = GetClientOfUserId(eEvent.GetInt("userid"));
@@ -1859,7 +1859,7 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 			CPrintToChatAll("{%s}%N{default} got killed by the world... somehow.", sClientColor, iClient);
 		}else if(g_iHitgroup[iClient] > 0/* || g_iHitgroup[iClient] > 7*/)
 		{
-			Format(sAttackerHealth[0], sizeof(sAttackerHealth[]), "({green}%i{default} hp, {green}%i{default} suit) ", GetClientHealth(iAttacker), GetClientArmor(iAttacker));
+			Format(sAttackerHealth[0], sizeof(sAttackerHealth[]), "({green}%d{default} hp, {green}%d{default} suit) ", GetClientHealth(iAttacker), GetClientArmor(iAttacker));
 			Format(sAttackerHealth[1], sizeof(sAttackerHealth[]), "%s", g_bShowDeathHealth[iClient] ? sAttackerHealth[0] : "");
 			
 			switch(g_iHitgroup[iClient])
