@@ -207,3 +207,8 @@ addons/sourcemod/data/kdm_classic/clients.txt
 addons/sourcemod/data/dumps/server-id.txt
 *.dem
 addons/sourcemod/plugins/disabled/updater.smx
+addons/sourcemod/scripting/constraints.sp
+addons/sourcemod/scripting/xfov.sp
+addons/sourcemod/scripting/include/jhl2dm.inc
+addons/sourcemod/plugins/xfov.smx
+addons/sourcemod/scripting/vphysics.sp

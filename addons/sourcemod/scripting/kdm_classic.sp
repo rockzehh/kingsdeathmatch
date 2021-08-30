@@ -1273,7 +1273,7 @@ public Action Command_SetNickColor(int iClient, int iArgs)
 	
 	if(g_bEnableNickname || g_bEnableColorNickname)
 	{
-		SetNicknameColor(iClient, sColor, StringToInt(sHex));
+		SetNicknameColor(iPlayer, sColor, StringToInt(sHex));
 		
 		SaveClient(iPlayer);
 		
