@@ -9,6 +9,7 @@
 		"Source" "scripting/include/socket.inc"
 		"Source" "scripting/include/steamtools.inc"
 	}
+	
 	"Information"
 	{
 		"Version"

@@ -1,5 +1,10 @@
 "Updater"
 {
+	"Files"
+	{
+		"Plugin"	"Path_SM/plugins/kdm_classic.smx"
+	}
+	
 	"Information"
 	{
 		"Version"
@@ -9,10 +14,5 @@
 		}
 		
 		"Notes"	"Added the functionality to save scores if you disconnect and rejoin that same round."
-	}
-	
-	"Files"
-	{
-		"Plugin"	"Path_SM/plugins/kdm_classic.smx"
 	}
 }

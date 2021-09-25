@@ -54,7 +54,6 @@ bool g_bEnableNickname;
 bool g_bFOV;
 bool g_bFallFix;
 bool g_bGod[MAXPLAYERS + 1];
-bool g_bInCoN[MAXPLAYERS + 1];
 bool g_bInZoom[MAXPLAYERS + 1];
 bool g_bInvisibility[MAXPLAYERS + 1];
 bool g_bJumpBoost[MAXPLAYERS + 1][2];
@@ -129,6 +128,7 @@ float g_fDamageModifier;
 float g_fJumpBoost;
 float g_fLastCombineBallTime[MAXPLAYERS + 1];
 float g_fPushForce;
+float g_fSpawnTime[MAXPLAYERS + 1];
 float g_fStandardJumpVel;
 
 Handle g_hAdvertisements;
@@ -481,6 +481,11 @@ public void OnMapEnd()
 
 public void OnClientPutInServer(int iClient)
 {
+	if(IsClientSourceTV(iClient))
+		{
+			ChangeClientTeam(iClient, TEAM_SPECTATOR);
+		}
+		
 	int iDeaths, iHeadshots, iKills;
 	
 	GetClientAuthId(iClient, AuthId_Steam2, g_sAuthID[iClient], sizeof(g_sAuthID[]));
@@ -640,7 +645,7 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 		return Plugin_Continue;
 	}
 	
-	if(g_bProtection[iClient])
+	if(g_bProtection[iClient] && g_fSpawnTime[iClient] + 1.0 <= GetGameTime())
 	{
 		if(iButtons & IN_RUN || iButtons & IN_JUMP || iButtons & IN_DUCK || iButtons & IN_BACK || iButtons & IN_LEFT || iButtons & IN_WALK || iButtons & IN_RIGHT || iButtons & IN_SPEED
 			|| iButtons & IN_ATTACK || iButtons & IN_FORWARD || iButtons & IN_ATTACK2 || iButtons & IN_ATTACK3 || iButtons & IN_MOVELEFT || iButtons & IN_MOVERIGHT)
@@ -1408,6 +1413,21 @@ public void Hook_FireBulletsPost(int iClient, int iShots, char[] sWeaponname)
 	}
 }
 
+stock int GetPlayerScoreboardPosition(int iClient) //Thanks to EasSidezz for this (https://forums.alliedmods.net/showthread.php?t=295000)
+{
+	int iCurrentPosition = 1, iFrags = GetClientFrags(iClient);
+	
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(Client_IsIngame(i) && Client_IsIngame(iClient) && !IsClientSourceTV(i))
+		{
+			if(GetClientFrags(i) > iFrags) iCurrentPosition++;
+		}
+	}
+	
+	return iCurrentPosition;
+}
+
 //Taken from: https://github.com/utharper/sourcemod-hl2dm/blob/648cf5303b6e9003210cd3a040124d426d6dbbe5/addons/sourcemod/scripting/include/jhl2dm.inc
 public int GetRealClientCount(bool bInGameOnly, bool bIncludeBots, bool bIncludeSpectators)
 {
@@ -1704,7 +1724,7 @@ public Action Hook_OnTakeDamage(int iClient, int &iAttacker, int &iInflictor, fl
 	bool bSuicide;
 	char sWeapon[64];
 	
-	if(g_bDev[iAttacker])
+	if(g_bDev[iAttacker] && Client_IsValid(iAttacker))
 	{
 		return Plugin_Handled;
 	}
@@ -1836,7 +1856,7 @@ public Action Event_PlayerClass(Event eEvent, char[] sName, bool bDontBroadcast)
 
 public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 {
-	char sAttackerColor[MAX_NAME_LENGTH], sAttackerHealth[2][128], sClientColor[MAX_NAME_LENGTH], sWeapon[128];
+	char sAttackerColor[MAX_NAME_LENGTH], sAttackerHealth[128], sClientColor[MAX_NAME_LENGTH], sWeapon[128];
 	
 	int iAttacker = GetClientOfUserId(eEvent.GetInt("attacker"));
 	int iClient = GetClientOfUserId(eEvent.GetInt("userid"));
@@ -1859,8 +1879,7 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 			CPrintToChatAll("{%s}%N{default} got killed by the world... somehow.", sClientColor, iClient);
 		}else if(g_iHitgroup[iClient] > 0/* || g_iHitgroup[iClient] > 7*/)
 		{
-			Format(sAttackerHealth[0], sizeof(sAttackerHealth[]), "({green}%d{default} hp, {green}%d{default} suit) ", GetClientHealth(iAttacker), GetClientArmor(iAttacker));
-			Format(sAttackerHealth[1], sizeof(sAttackerHealth[]), "%s", g_bShowDeathHealth[iClient] ? sAttackerHealth[0] : "");
+			Format(sAttackerHealth, sizeof(sAttackerHealth), "({green}%d{default} hp, {green}%d{default} suit)", GetClientHealth(iAttacker), GetClientArmor(iAttacker));
 			
 			switch(g_iHitgroup[iClient])
 			{
@@ -1878,17 +1897,17 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for killing {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for killing {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for fucking obliterating {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for fucking obliterating {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 2:
 						{
-							CPrintToChatAll("{%s}%N{default} %sfucking creamed {%s}%N{default}. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %s fucking creamed {%s}%N{default}. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
@@ -1907,17 +1926,17 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for shooting {%s}%N{default} in the head.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for shooting {%s}%N{default} in the head.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for blowing {%s}%N{default}'s fucking brains out.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for blowing {%s}%N{default}'s fucking brains out.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 2:
 						{
-							CPrintToChatAll("{%s}%N{default} %sblew a hole through {%s}%N{default}'s head. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %s blew a hole through {%s}%N{default}'s head. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
@@ -1934,12 +1953,12 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for breaking {%s}%N{default}'s heart. </3", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for breaking {%s}%N{default}'s heart. </3", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} %sstole {%s}%N{default}'s torso. :( ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %s stole {%s}%N{default}'s torso. :( ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
@@ -1956,17 +1975,17 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for busting {%s}%N{default}'s gut.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for busting {%s}%N{default}'s gut.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for reliefing {%s}%N{default} of gas.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for reliefing {%s}%N{default} of gas.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 2:
 						{
-							CPrintToChatAll("{%s}%N{default} %sstole {%s}%N{default}'s stomach. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %s stole {%s}%N{default}'s stomach. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
@@ -1983,12 +2002,12 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for breaking {%s}%N{default}'s useless hand.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for breaking {%s}%N{default}'s useless hand.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} %sstole {%s}%N{default}'s left arm. Guess he didn't need it anyways.. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %s stole {%s}%N{default}'s left arm. Guess he didn't need it anyways.. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
@@ -2005,12 +2024,12 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					{
 						case 0:
 						{
-							CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for stealing {%s}%N{default}'s magic hand.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+							CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for stealing {%s}%N{default}'s magic hand.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 						}
 						
 						case 1:
 						{
-							CPrintToChatAll("{%s}%N{default} %sbroke {%s}%N{default}'s middle finger. What a dick.. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
+							CPrintToChatAll("{%s}%N{default} %s broke {%s}%N{default}'s middle finger. What a dick.. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 						}
 					}
 				}
@@ -2023,7 +2042,7 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					
 					g_iCredits[iAttacker] += iRandom;
 					
-					CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for breaking {%s}%N{default}'s left leg.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+					CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for breaking {%s}%N{default}'s left leg.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 				}
 				case HITGROUP_RIGHTLEG:
 				{
@@ -2034,7 +2053,7 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 					
 					g_iCredits[iAttacker] += iRandom;
 					
-					CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for breaking {%s}%N{default}'s right leg.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+					CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for breaking {%s}%N{default}'s right leg.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 				}
 			}
 		}else{
@@ -2050,17 +2069,17 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 			{
 				case 0:
 				{
-					CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for killing {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+					CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for killing {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 				}
 				
 				case 1:
 				{
-					CPrintToChatAll("{%s}%N{default} %sgot {green}+%i{default} credits for fucking obliterating {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
+					CPrintToChatAll("{%s}%N{default} %s got {green}+%i{default} credits for fucking obliterating {%s}%N{default}.", sAttackerColor, iAttacker, sAttackerHealth, iRandom, sClientColor, iClient);
 				}
 				
 				case 2:
 				{
-					CPrintToChatAll("{%s}%N{default} %sfucking creamed {%s}%N{default}. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
+					CPrintToChatAll("{%s}%N{default} %s fucking creamed {%s}%N{default}. ({green}+%i{default} credits)", sAttackerColor, iAttacker, sAttackerHealth, sClientColor, iClient, iRandom);
 				}
 			}
 		}
@@ -2110,6 +2129,8 @@ public Action Event_PlayerSpawn(Event eEvent, char[] sName, bool bDontBroadcast)
 	CreateTimer(0.1, Timer_FOV, iClient);
 	
 	SetEntityHealth(iClient, g_iStartHealth);
+	
+	g_fSpawnTime[iClient] = GetGameTime();
 }
 
 public Action Event_GameEnd(Event eEvent, char[] sName, bool bDontBroadcast)
@@ -2217,7 +2238,25 @@ public Action Timer_Fire(Handle hTimer, any iClient)
 {
 	if(g_bPlayer[iClient])
 	{
+		float fForce[3], fVelocity[3];
+		
 		int iRagdoll = GetEntPropEnt(iClient, Prop_Send, "m_hRagdoll");
+		
+		GetEntPropVector(iRagdoll, Prop_Send, "m_vecForce", fForce);
+		
+		fForce[0] *= 45.0;
+		fForce[1] *= 45.0;
+		fForce[2] *= 45.0;
+		
+		SetEntPropVector(iRagdoll, Prop_Send, "m_vecForce", fForce);
+		
+		GetEntPropVector(iRagdoll, Prop_Send, "m_vecRagdollVelocity", fVelocity);
+		
+		fVelocity[0] *= 25.0;
+		fVelocity[1] *= 25.0;
+		fVelocity[2] *= 25.0;
+		
+		SetEntPropVector(iRagdoll, Prop_Send, "m_vecRagdollVelocity", fVelocity);
 		
 		IgniteEntity(iRagdoll, 5.0);
 	}
@@ -2300,9 +2339,9 @@ public Action Timer_StatHud(Handle hTimer, any iClient)
 		if(g_bAllKills)
 		{
 			//Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%.2f All-Time KTD\n%.1f Round KTD", iClient, g_iCredits[iClient], Client_GetScore(iClient), Client_GetDeaths(iClient), g_iAllHeadshots[iClient], fAllKTD, fRoundKTD);
-			Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%s All-Time KTD\n%.1f Round KTD", iClient, g_iCredits[iClient], Client_GetScore(iClient), Client_GetDeaths(iClient), g_iHeadshots[iClient], sAllKTD, fRoundKTD);
+			Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\nRound Ranking: #%i/%i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%s All-Time KTD\n%.1f Round KTD", iClient, g_iCredits[iClient], GetPlayerScoreboardPosition(iClient), GetRealClientCount(true, false, false), Client_GetScore(iClient), Client_GetDeaths(iClient), g_iHeadshots[iClient], sAllKTD, fRoundKTD);
 		}else{
-			Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%.1f Round KTD", iClient, g_iCredits[iClient], Client_GetScore(iClient), Client_GetDeaths(iClient), g_iHeadshots[iClient], fRoundKTD);
+			Format(sStatsHud[0], sizeof(sStatsHud[]), "Name: %N\nCredits: %i\nRound Ranking: #%i/%i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%.1f Round KTD", iClient, g_iCredits[iClient], GetPlayerScoreboardPosition(iClient), GetRealClientCount(true, false, false), Client_GetScore(iClient), Client_GetDeaths(iClient), g_iHeadshots[iClient], fRoundKTD);
 		}
 		
 		g_bPrivateMatchRunning ? Format(sStatsHud[1], sizeof(sStatsHud[]), "Password: %s\nCurrent Map: %s\nTimeleft: %d:%02d", g_sServerPassword, g_sMap, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60)) : Format(sStatsHud[1], sizeof(sStatsHud[]), "Current Map: %s\nTimeleft: %d:%02d", g_sMap, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60));

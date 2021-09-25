@@ -1,0 +1,122 @@
+"DeathMessages"
+{
+	"0"
+	{
+		"weapon_357"			""
+		"weapon_ar2"			""
+		"weapon_crossbow"		""
+		"weapon_crowbar"		""
+		"weapon_frag"			""
+		"weapon_physcannon"		""
+		"weapon_pistol"			""
+		"weapon_rpg"			""
+		"weapon_shotgun"		""
+		"weapon_smg1"			""
+		"weapon_stunstick"		""
+	}
+	
+	"1"
+	{
+		"weapon_357"			""
+		"weapon_ar2"			""
+		"weapon_crossbow"		""
+		"weapon_crowbar"		""
+		"weapon_frag"			""
+		"weapon_physcannon"		""
+		"weapon_pistol"			""
+		"weapon_rpg"			""
+		"weapon_shotgun"		""
+		"weapon_smg1"			""
+		"weapon_stunstick"		""
+	}
+	
+	"2"
+	{
+		"weapon_357"			""
+		"weapon_ar2"			""
+		"weapon_crossbow"		""
+		"weapon_crowbar"		""
+		"weapon_frag"			""
+		"weapon_physcannon"		""
+		"weapon_pistol"			""
+		"weapon_rpg"			""
+		"weapon_shotgun"		""
+		"weapon_smg1"			""
+		"weapon_stunstick"		""
+	}
+	
+	"3"
+	{
+		"weapon_357"			""
+		"weapon_ar2"			""
+		"weapon_crossbow"		""
+		"weapon_crowbar"		""
+		"weapon_frag"			""
+		"weapon_physcannon"		""
+		"weapon_pistol"			""
+		"weapon_rpg"			""
+		"weapon_shotgun"		""
+		"weapon_smg1"			""
+		"weapon_stunstick"		""
+	}
+	
+	"4"
+	{
+		"weapon_357"			""
+		"weapon_ar2"			""
+		"weapon_crossbow"		""
+		"weapon_crowbar"		""
+		"weapon_frag"			""
+		"weapon_physcannon"		""
+		"weapon_pistol"			""
+		"weapon_rpg"			""
+		"weapon_shotgun"		""
+		"weapon_smg1"			""
+		"weapon_stunstick"		""
+	}
+	
+	"5"
+	{
+		"weapon_357"			""
+		"weapon_ar2"			""
+		"weapon_crossbow"		""
+		"weapon_crowbar"		""
+		"weapon_frag"			""
+		"weapon_physcannon"		""
+		"weapon_pistol"			""
+		"weapon_rpg"			""
+		"weapon_shotgun"		""
+		"weapon_smg1"			""
+		"weapon_stunstick"		""
+	}
+	
+	"6"
+	{
+		"weapon_357"			""
+		"weapon_ar2"			""
+		"weapon_crossbow"		""
+		"weapon_crowbar"		""
+		"weapon_frag"			""
+		"weapon_physcannon"		""
+		"weapon_pistol"			""
+		"weapon_rpg"			""
+		"weapon_shotgun"		""
+		"weapon_smg1"			""
+		"weapon_stunstick"		""
+	}
+	
+	"7"
+	{
+		"weapon_357"			""
+		"weapon_ar2"			""
+		"weapon_crossbow"		""
+		"weapon_crowbar"		""
+		"weapon_frag"			""
+		"weapon_physcannon"		""
+		"weapon_pistol"			""
+		"weapon_rpg"			""
+		"weapon_shotgun"		""
+		"weapon_smg1"			""
+		"weapon_stunstick"		""
+	}
+|
