@@ -827,11 +827,11 @@ stock void CheckClientSpawnProtection(int iClient, int &iButtons)
 
 stock int GetPlayerScoreboardPosition(int iClient) //Thanks to EasSidezz for this (https://forums.alliedmods.net/showthread.php?t=295000)
 {
-	int iCurrentPosition, iFrags = GetClientFrags(iClient);
+	int iCurrentPosition = 1, iFrags = GetClientFrags(iClient);
 	
 	for(int i = 1; i <= MaxClients; i++)
 	{
-		if(Client_IsValid(i))
+		if(Client_IsIngame(i) && Client_IsIngame(iClient) && !IsClientSourceTV(i))
 		{
 			if(GetClientFrags(i) > iFrags) iCurrentPosition++;
 		}
@@ -879,7 +879,7 @@ stock void SendClientDeathMessage(int iClient, int iAttacker, char[] sWeapon)
 			{
 				case HITGROUP_GENERIC:
 				{
-					
+					LoadString(g_kvDeathMessages, const char[] sKey, const char[] sSaveKey, const char[] sDefaultValue, char[] sReference, int iMaxLength)
 				}
 				
 				case HITGROUP_HEAD:

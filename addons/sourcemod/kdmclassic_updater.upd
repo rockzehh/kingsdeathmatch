@@ -3,16 +3,18 @@
 	"Files"
 	{
 		"Plugin"	"Path_SM/plugins/kdm_classic.smx"
+		"Source"	"Path_SM/include/morecolors.inc"
+		"Source"	"Path_SM/scripting/kdm_classic.sp"
 	}
 	
 	"Information"
 	{
 		"Version"
 		{
-			"Latest"	"2.0"
-			"Previous"	"1.4.0"
+			"Latest"	"2.3"
+			"Previous"	"2.0"
 		}
 		
-		"Notes"	"Added the functionality to save scores if you disconnect and rejoin that same round."
+		"Notes"	"Fixed spawn protection and the death messages not showing proper information."
 	}
 }
