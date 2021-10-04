@@ -482,10 +482,10 @@ public void OnMapEnd()
 public void OnClientPutInServer(int iClient)
 {
 	if(IsClientSourceTV(iClient))
-		{
-			ChangeClientTeam(iClient, TEAM_SPECTATOR);
-		}
-		
+	{
+		ChangeClientTeam(iClient, TEAM_SPECTATOR);
+	}
+	
 	int iDeaths, iHeadshots, iKills;
 	
 	GetClientAuthId(iClient, AuthId_Steam2, g_sAuthID[iClient], sizeof(g_sAuthID[]));
@@ -666,24 +666,30 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 		
 		if ((iButtons & iButton) && !(g_iLastButton[iClient] & iButton))
 		{
-			if((iButtons & IN_DUCK) && (iButton & IN_JUMP) && (iFlags & FL_ONGROUND) && !g_bLongJumpPressed[iClient] && g_bLongJump[iClient][1] && g_bEnableLongJump)
+			switch(view_as<int>(iButtons & IN_DUCK))
 			{
-				LongJumpFunction(iClient);
+				case 0:
+				{
+					if ((iButtons & IN_JUMP) && (iFlags & FL_ONGROUND) && !g_bLongJumpPressed[iClient])
+					{
+						GetEntPropVector(iClient, Prop_Data, "m_vecVelocity", fVelocity);
+						
+						fVelocity[2] += g_bJumpBoost[iClient][1] ? g_fJumpBoost : g_fStandardJumpVel;
+						TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fVelocity);
+						
+						g_bLongJumpPressed[iClient] = true;
+					}
+				}
 				
-				g_bLongJumpPressed[iClient] = true;
-			}else if ((iButtons & IN_JUMP) && (iFlags & FL_ONGROUND) && !g_bLongJumpPressed[iClient])
-			{
-				GetEntPropVector(iClient, Prop_Data, "m_vecVelocity", fVelocity);
-				
-				fVelocity[2] += g_bJumpBoost[iClient][1] ? g_fJumpBoost : g_fStandardJumpVel;
-				TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fVelocity);
-				
-				g_bLongJumpPressed[iClient] = true;
-			}
-			
-			if((iButtons & IN_ZOOM))
-			{
-				g_bZoom[iClient] = true;
+				case 1:
+				{
+					if((iButtons & IN_DUCK) && (iButton & IN_JUMP) && (iFlags & FL_ONGROUND) && !g_bLongJumpPressed[iClient] && g_bLongJump[iClient][1] && g_bEnableLongJump)
+					{
+						LongJumpFunction(iClient);
+						
+						g_bLongJumpPressed[iClient] = true;
+					}
+				}
 			}
 		}
 		
@@ -1403,7 +1409,7 @@ public void Hook_FireBulletsPost(int iClient, int iShots, char[] sWeaponname)
 		ReFillWeapon(iClient, iWeapon);
 	}
 	
-	if(g_bProtection[iClient])
+	/*if(g_bProtection[iClient])
 	{
 		SetEntProp(iClient, Prop_Data, "m_takedamage", 2, 1);
 		
@@ -1411,7 +1417,7 @@ public void Hook_FireBulletsPost(int iClient, int iShots, char[] sWeaponname)
 		SetEntityRenderFx(iClient, (g_bEnableInvisibility && g_bInvisibility[iClient]) ? RENDERFX_DISTORT : RENDERFX_NONE);
 		
 		g_bProtection[iClient] = false;
-	}
+	}*/
 }
 
 stock int GetPlayerScoreboardPosition(int iClient) //Thanks to EasSidezz for this (https://forums.alliedmods.net/showthread.php?t=295000)
@@ -1724,6 +1730,11 @@ public Action Hook_OnTakeDamage(int iClient, int &iAttacker, int &iInflictor, fl
 {
 	bool bSuicide;
 	char sWeapon[64];
+	
+	if(g_bProtection[iClient])
+	{
+		return Plugin_Handled;
+	}
 	
 	if(Client_IsValid(iAttacker) && g_bDev[iAttacker])
 	{

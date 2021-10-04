@@ -391,7 +391,9 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 					TeleportEntity(iClient, NULL_VECTOR, NULL_VECTOR, fVelocity);
 					
 					g_bUsingJump[iClient] = true;
-				}else if(!g_bUsingJump[iClient] && g_bEnableLongJump && g_bLongJump[iClient][1] && (iButtons & IN_DUCK) && (iButtons & IN_JUMP) && (iFlags & FL_ONGROUND))
+				}
+				
+				if(!g_bUsingJump[iClient] && g_bEnableLongJump && g_bLongJump[iClient][1] && (iButtons & IN_DUCK) && (iButtons & IN_JUMP) && (iFlags & FL_ONGROUND))
 				{
 					UseLongJump(iClient, fVelocity);
 					
@@ -813,8 +815,9 @@ public void Frame_SpawnProtection(any iUserID)
 //Stocks:
 stock void CheckClientSpawnProtection(int iClient, int &iButtons)
 {
-	if(iButtons & IN_RUN || iButtons & IN_JUMP || iButtons & IN_DUCK || iButtons & IN_BACK || iButtons & IN_LEFT || iButtons & IN_WALK || iButtons & IN_RIGHT || iButtons & IN_SPEED
-		|| iButtons & IN_ATTACK || iButtons & IN_FORWARD || iButtons & IN_ATTACK2 || iButtons & IN_ATTACK3 || iButtons & IN_MOVELEFT || iButtons & IN_MOVERIGHT)
+	if((iButtons & IN_RUN) || (iButtons & IN_JUMP) || (iButtons & IN_DUCK) || (iButtons & IN_BACK) || (iButtons & IN_LEFT) ||
+	(iButtons & IN_WALK) || (iButtons & IN_RIGHT) || (iButtons & IN_FORWARD) || (iButtons & IN_BACK) || (iButtons & IN_SPEED) ||
+	(iButtons & IN_MOVELEFT) || (iButtons & IN_MOVERIGHT))
 	{
 		g_bHasProtection[iClient] = false;
 		
@@ -860,9 +863,100 @@ stock void LoadString(KeyValues kvVault, const char[] sKey, const char[] sSaveKe
 	kvVault.Rewind();
 }
 
+stock void DeathPrintToChat(int iAttacker, int iClient, int iCredits, const char[] sMessage, any ...)
+{
+	CCheckTrie();
+	
+	if(iClient <= 0 || iClient > MaxClients)
+	{
+		ThrowError("Invalid client index %i", iClient);
+	}
+	
+	if(!IsClientInGame(iClient))
+	{
+		ThrowError("Client %i is not in game", iClient);
+	}
+	
+	char sBuffer[MAX_BUFFER_LENGTH], sBuffer2[MAX_BUFFER_LENGTH], sTempString[MAX_BUFFER_LENGTH];
+	
+	SetGlobalTransTarget(iClient);
+	
+	Format(sBuffer, sizeof(sBuffer), "\x01%s", sMessage);
+	VFormat(sBuffer2, sizeof(sBuffer2), sBuffer, 3);
+	
+	Format(sTempString, sizeof(sTempString), "{%s}%N{default}", StrEqual(g_nNickname[iAttacker].NicknameColor, "") ? "default" : g_nNickname[iAttacker].NicknameColor, iAttacker);
+	ReplaceString(sBuffer2, sizeof(sBuffer2), "{ATTACKER}", sTempString, true);
+	
+	g_nNickname[iClient].NicknameColor
+	
+	Format(sTempString, sizeof(sTempString), "({green}%i{default} hp, {green}%i{default} suit)", GetClientHealth(iAttacker), Client_GetArmor(iAttacker));
+	ReplaceString(sBuffer2, sizeof(sBuffer2), "{ATTACKERHEALTH}", sTempString, true);
+	
+	Format(sTempString, sizeof(sTempString), "{%s}%N{default}", StrEqual(g_nNickname[iClient].NicknameColor, "") ? "default" : g_nNickname[iClient].NicknameColor, iClient);
+	ReplaceString(sBuffer2, sizeof(sBuffer2), "{CLIENT}", sTempString, true);
+	
+	Format(sTempString, sizeof(sTempString), "({green}+%i{default} credits)", iCredits);
+	ReplaceString(sBuffer2, sizeof(sBuffer2), "{CREDITS}", sTempString, true);
+	
+	Format(sTempString, sizeof(sTempString), "{green}%i{default}", iCredits);
+	ReplaceString(sBuffer2, sizeof(sBuffer2), "{LOSTCREDITS}", sTempString, true);
+	
+	CReplaceColorCodes(sBuffer2);
+	CSendMessage(iClient, sBuffer2);
+}
+
+stock void RegPrintToChat(int iClient, const char[] sMessage, any ...)
+{
+	CCheckTrie();
+	
+	if(iClient <= 0 || iClient > MaxClients)
+	{
+		ThrowError("Invalid client index %i", iClient);
+	}
+	
+	if(!IsClientInGame(iClient))
+	{
+		ThrowError("Client %i is not in game", iClient);
+	}
+	
+	char sBuffer[MAX_BUFFER_LENGTH], sBuffer2[MAX_BUFFER_LENGTH], sTempString[MAX_BUFFER_LENGTH];
+	
+	SetGlobalTransTarget(iClient);
+	
+	Format(sBuffer, sizeof(sBuffer), "\x01%s", sMessage);
+	VFormat(sBuffer2, sizeof(sBuffer2), sBuffer, 3);
+	
+	CReplaceColorCodes(sBuffer2);
+	CSendMessage(iClient, sBuffer2);
+}
+
+stock void RegPrintToChatAll(const char[] sMessage, any ...)
+{
+	CCheckTrie();
+	
+	char sBuffer[MAX_BUFFER_LENGTH], sBuffer2[MAX_BUFFER_LENGTH];
+	
+	for(int i = 1; i <= MaxClients; i++)
+	{
+		if(!IsClientInGame(i) || CSkipList[i])
+		{
+			CSkipList[i] = false;
+			continue;
+		}
+		
+		SetGlobalTransTarget(i);
+		
+		Format(sBuffer, sizeof(sBuffer), "\x01%s", sMessage);
+		VFormat(sBuffer2, sizeof(sBuffer2), sBuffer, 2);
+		
+		CReplaceColorCodes(sBuffer2);
+		CSendMessage(i, sBuffer2);
+	}
+}
+
 stock void SendClientDeathMessage(int iClient, int iAttacker, char[] sWeapon)
 {
-	char sAttackerColor[MAX_NAME_LENGTH], sAttackerHealth[64], sClientColor[MAX_NAME_LENGTH];
+	char sAttackerColor[MAX_NAME_LENGTH], sAttackerHealth[64], sClientColor[MAX_NAME_LENGTH], sHitgroup[1];
 	
 	if(iClient != iAttacker)
 	{
@@ -870,16 +964,16 @@ stock void SendClientDeathMessage(int iClient, int iAttacker, char[] sWeapon)
 		{
 			g_ptPointType[iClient].AllDeaths++;
 			
-			CPrintToChatAll("{%s}%N{default} got killed by the world... somehow.", sClientColor, iClient);
+			DeathPrintToChatAll(-1, iClient, 0, "{CLIENT} got killed by the world... somehow.");
 		}else if(g_iHitgroup[iClient] > 0)
 		{
-			Format(sAttackerHealth, sizeof(sAttackerHealth), "({green}%i{default} hp, {green}%i{default} suit)", GetClientHealth(iAttacker), Client_GetArmor(iAttacker));
+			IntToString(g_iHitgroup[iClient], sHitgroup, sizeof(sHitgroup));
 			
 			switch(g_iHitgroup[iClient])
 			{
 				case HITGROUP_GENERIC:
 				{
-					LoadString(g_kvDeathMessages, const char[] sKey, const char[] sSaveKey, const char[] sDefaultValue, char[] sReference, int iMaxLength)
+					LoadString(g_kvDeathMessages, sHitgroup, sWeapon, "", char[] sReference, int iMaxLength)
 				}
 				
 				case HITGROUP_HEAD:
@@ -955,8 +1049,7 @@ public Action Timer_ChatAdvertisements(Handle hTimer)
 	
 	if(!g_bDisableAdvertisements)
 	{
-		
-		CPrintToChatAll(sAdvertisement);
+		KDMPrintToChatAll(sAdvertisement);
 		
 		//Advertisement chat sound:
 		for(int i = 1; i <= MaxClients; i++)
