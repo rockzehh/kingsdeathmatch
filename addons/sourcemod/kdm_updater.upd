@@ -11,8 +11,8 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.4"
-			"Previous"	"2.3"
+			"Latest"	"2.4-r1"
+			"Previous"	"2.4"
 		}
 		
 		"Notes"	"Fixed the jumpboost and long jump functions."
