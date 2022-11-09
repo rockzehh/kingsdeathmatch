@@ -4,7 +4,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "RockZehh"
-#define PLUGIN_VERSION "2.4-r2"
+#define PLUGIN_VERSION "2.4-r3"
 
 #define MAX_BUTTONS 26
 
@@ -2331,9 +2331,9 @@ public Action Timer_StatHud(Handle hTimer, any iClient)
 		
 		if(g_bAllKills)
 		{
-			Format(sStatsHud[0], sizeof(sStatsHud[]), "Credits: %i\nRound Ranking: #%i/%i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%s All-Time KTD\n%.1f Round KTD", iClient, g_iCredits[iClient], GetPlayerScoreboardPosition(iClient), GetRealClientCount(true, false, false), Client_GetScore(iClient), Client_GetDeaths(iClient), g_iHeadshots[iClient], sAllKTD, fRoundKTD);
+			Format(sStatsHud[0], sizeof(sStatsHud[]), "Credits: %i\nRound Ranking: #%i/%i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%s All-Time KTD\n%.1f Round KTD", g_iCredits[iClient], GetPlayerScoreboardPosition(iClient), GetRealClientCount(true, false, false), Client_GetScore(iClient), Client_GetDeaths(iClient), g_iHeadshots[iClient], sAllKTD, fRoundKTD);
 		}else{
-			Format(sStatsHud[0], sizeof(sStatsHud[]), "Credits: %i\nRound Ranking: #%i/%i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%.1f Round KTD", iClient, g_iCredits[iClient], GetPlayerScoreboardPosition(iClient), GetRealClientCount(true, false, false), Client_GetScore(iClient), Client_GetDeaths(iClient), g_iHeadshots[iClient], fRoundKTD);
+			Format(sStatsHud[0], sizeof(sStatsHud[]), "Credits: %i\nRound Ranking: #%i/%i\n\nKills: %i\nDeaths: %i\nHeadshots: %i\n\n%.1f Round KTD", g_iCredits[iClient], GetPlayerScoreboardPosition(iClient), GetRealClientCount(true, false, false), Client_GetScore(iClient), Client_GetDeaths(iClient), g_iHeadshots[iClient], fRoundKTD);
 		}
 		
 		g_bPrivateMatchRunning ? Format(sStatsHud[1], sizeof(sStatsHud[]), "Password: %s\nCurrent Map: %s\nTimeleft: %d:%02d", g_sServerPassword, g_sMap, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60)) : Format(sStatsHud[1], sizeof(sStatsHud[]), "Current Map: %s\nTimeleft: %d:%02d", g_sMap, iTimeleft <= 0 ? 00 : (iTimeleft / 60), iTimeleft <= 0 ? 00 : (iTimeleft % 60));
