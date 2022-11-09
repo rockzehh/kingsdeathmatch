@@ -3,7 +3,7 @@
 	"Messages"
 	{
 		"1"			"We have a {green}credits{default} system. Type {green}!credits{default} to use it."
-		"2"			"Latest Update [{green}08/18/2022{default}]: The {green}jump boost{default} and Long-Jump should be working without any hitches again."
+		"2"			"Latest Update [{green}11/08/2022{default}]: The {green}HUD{default} has been slightly updated."
 		"3"			"We have a {green}Long-Jump{default} upgrade! Type {green}!longjump{default} to enable it!"
 		"4"			"Want to change your default weapon? Type {green}!default{default} to change the default weapon to your current gun."
 		"5"			"Close to death? Type {green}!boost{default} to get a health boost!"

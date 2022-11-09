@@ -11,10 +11,10 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.4-r1"
-			"Previous"	"2.4"
+			"Latest"	"2.4-r2"
+			"Previous"	"2.4-r1"
 		}
 		
-		"Notes"	"Fixed the jumpboost and long jump functions."
+		"Notes"	"Removed the player name from the HUD to make sure all text shows up."
 	}
 }
