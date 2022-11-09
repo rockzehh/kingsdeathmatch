@@ -2,8 +2,9 @@
 {
 	"Files"
 	{
-		"Plugin"	"Path_SM/plugins/kdm_main.smx"
+		"Source"	"Path_SM/data/kdm/advertisements.txt"
 		"Source"	"Path_SM/include/morecolors.inc"
+		"Plugin"	"Path_SM/plugins/kdm_main.smx"
 		"Source"	"Path_SM/scripting/kdm_main.sp"
 	}
 	
