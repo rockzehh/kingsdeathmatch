@@ -4,7 +4,7 @@
 #define DEBUG
 
 #define PLUGIN_AUTHOR "RockZehh"
-#define PLUGIN_VERSION "2.4-r3"
+#define PLUGIN_VERSION "2.4-r4"
 
 #define MAX_BUTTONS 26
 
@@ -51,10 +51,8 @@ bool g_bEnableJumpBoost;
 bool g_bEnableLongJump;
 bool g_bEnableModelChanger;
 bool g_bEnableNickname;
-bool g_bFOV;
 bool g_bFallFix;
 bool g_bGod[MAXPLAYERS + 1];
-bool g_bInZoom[MAXPLAYERS + 1];
 bool g_bInvisibility[MAXPLAYERS + 1];
 bool g_bJumpBoost[MAXPLAYERS + 1][2];
 bool g_bJumpBoostActivated[MAXPLAYERS + 1];
@@ -70,7 +68,6 @@ bool g_bPrivateMatches;
 bool g_bProtection[MAXPLAYERS + 1];
 bool g_bRPG;
 bool g_bShowDeathHealth[MAXPLAYERS + 1];
-bool g_bZoom[MAXPLAYERS + 1];
 
 char g_sAdvertisementsDatabase[PLATFORM_MAX_PATH];
 char g_sAuthID[MAXPLAYERS + 1][64];
@@ -96,7 +93,6 @@ ConVar g_cvEnableLongJump;
 ConVar g_cvEnableModelChanger;
 ConVar g_cvEnableNickname;
 ConVar g_cvEnableSourceTVDemos;
-ConVar g_cvFOV;
 ConVar g_cvFallingFix;
 ConVar g_cvHalfDamage;
 ConVar g_cvHealthBoost;
@@ -109,11 +105,9 @@ ConVar g_cvPassword;
 ConVar g_cvShowAllKills;
 ConVar g_cvSourceTV[3];
 ConVar g_cvSpawnRPG;
-ConVar g_cvStartFOV;
 ConVar g_cvStartHealth;
 ConVar g_cvUpgradePriceColorNickname;
 ConVar g_cvUpgradePriceHealthBoost;
-ConVar g_cvUseFOV;
 ConVar g_cvUseSourceMenus;
 
 float g_fCombineBallCooldown;
@@ -155,21 +149,17 @@ int g_iCredits[MAXPLAYERS + 1];
 int g_iCrowbarDamage;
 int g_iCustomNickColor[MAXPLAYERS + 1];
 int g_iDeaths[MAXPLAYERS + 1];
-int g_iFOV;
 int g_iHeadshots[MAXPLAYERS + 1];
 int g_iHealthBoost;
 int g_iHitgroup[MAXPLAYERS + 1];
 int g_iKills[MAXPLAYERS + 1];
 int g_iLastButton[MAXPLAYERS + 1];
-int g_iStartFOV;
 int g_iStartHealth;
 int g_iUpgrade_Prices[] =
 {
 	350, //Health Boost
 	25000, //Colored Nicknames
 };
-int g_iZoomStatus[MAXPLAYERS + 1];
-enum(+=1) { ZOOM_NONE, ZOOM_XBOW, ZOOM_SUIT, ZOOM_TOGL, FIRSTPERSON }
 
 KeyValues g_kvAdvertisements;
 
@@ -205,7 +195,7 @@ public void OnPluginStart()
 	g_cvAllowPrivateMatches = CreateConVar("kdm_server_allow_private_matches", "1", "If users can start a private match.", _, true, 0.1, true, 1.0);
 	g_cvCombineBallCooldown = CreateConVar("kdm_weapon_combineball_cooldown", "2.5", "The number of seconds that the cooldown on combine balls last.");
 	g_cvCrowbarDamage = CreateConVar("kdm_wep_crowbar_damage", "500", "The damage the crowbar will do.");
-	g_cvDefaultJumpVelocity = CreateConVar("kdm_player_jump_velocity", "100.0", "The default jump velocity.");
+	g_cvDefaultJumpVelocity = CreateConVar("kdm_player_jump_velocity", "120.0", "The default jump velocity.");
 	g_cvDisableAdvertisements = CreateConVar("kdm_chat_disable_advertisements", "0", "Decides if chat advertisements should be displayed.", _, true, 0.1, true, 1.0);
 	g_cvEnableColorNickname = CreateConVar("kdm_colornickname_enable", "1", "Decides if colored nicknames are enabled.", _, true, 0.1, true, 1.0);
 	g_cvEnableInvisibility = CreateConVar("kdm_invisible_enable", "1", "Decides if the invisiblity effect is enabled.", _, true, 0.1, true, 1.0);
@@ -214,7 +204,6 @@ public void OnPluginStart()
 	g_cvEnableModelChanger = CreateConVar("kdm_player_model_change", "1", "Decides if the player can change their model.", _, true, 0.1, true, 1.0);
 	g_cvEnableSourceTVDemos = CreateConVar("kdm_demos_enable", "1", "Decides if the SourceTV demo recording is enabled.", _, true, 0.1, true, 1.0);
 	g_cvFallingFix = CreateConVar("kdm_player_tposefix", "1", "Decides if to fix the T-Pose falling glitch.", _, true, 0.1, true, 1.0);
-	g_cvFOV = CreateConVar("kdm_player_custom_fov", "115", "The custom FOV value.");
 	g_cvHalfDamage = CreateConVar("kdm_player_alternatedamage", "1", "Decides if the players have alternate damage.", _, true, 0.1, true, 1.0);
 	g_cvHealthBoost = CreateConVar("kdm_healthboost_amount", "75", "The amount of health the health boost will do.");
 	g_cvHealthModifier = CreateConVar("kdm_player_damage_modifier", "0.5", "Damage modifier. A better description will be added.");
@@ -229,11 +218,9 @@ public void OnPluginStart()
 	g_cvSourceTV[1] = FindConVar("tv_autorecord");
 	g_cvSourceTV[2] = FindConVar("tv_maxclients");
 	g_cvSpawnRPG = CreateConVar("kdm_wep_allow_rpg", "0", "Decides if the RPG is allowed to spawn.", _, true, 0.1, true, 1.0);
-	g_cvStartFOV = CreateConVar("kdm_player_start_fov", "50", "The custom start animation FOV value.");
 	g_cvStartHealth = CreateConVar("kdm_player_start_health", "175", "The start player health.");
 	g_cvUpgradePriceHealthBoost = CreateConVar("kdm_healthboost_price", "350", "The amount of credits you need to pay to use the health boost.");
-	g_cvUpgradePriceColorNickname = CreateConVar("kdm_colornickname_price", "25000", "The amount of credits you need to buy the colored nickname.");
-	g_cvUseFOV = CreateConVar("kdm_player_custom_fov_enable", "1", "Decides to use the custom FOV on the players.", _, true, 0.1, true, 1.0);
+	g_cvUpgradePriceColorNickname = CreateConVar("kdm_colornickname_price", "5000", "The amount of credits you need to buy the colored nickname.");
 	g_cvUseSourceMenus = CreateConVar("kdm_server_usesourcemenus", "0", "Decides to use the chat option or the menu system.", _, true, 0.1, true, 1.0);
 	
 	CreateConVar("kdm_plugin_version", PLUGIN_VERSION, "The version of the plugin the server is running.");
@@ -250,8 +237,6 @@ public void OnPluginStart()
 	g_bEnableModelChanger = g_cvEnableModelChanger.BoolValue;
 	g_bEnableNickname = g_cvEnableNickname.BoolValue;
 	g_bFallFix = g_cvFallingFix.BoolValue;
-	g_bFOV = g_cvUseFOV.BoolValue;
-	g_iFOV = g_cvFOV.IntValue;
 	g_bAltDamage = g_cvHalfDamage.BoolValue;
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
@@ -268,7 +253,6 @@ public void OnPluginStart()
 	g_cvSourceTV[1].BoolValue = true;
 	g_cvSourceTV[2].IntValue = 0;
 	g_fStandardJumpVel = g_cvDefaultJumpVelocity.FloatValue;
-	g_iStartFOV = g_cvStartFOV.IntValue;
 	g_iStartHealth = g_cvStartHealth.IntValue;
 	
 	g_iUpgrade_Prices[0] = g_cvUpgradePriceHealthBoost.IntValue;
@@ -288,7 +272,6 @@ public void OnPluginStart()
 	g_cvEnableNickname.AddChangeHook(OnConVarsChanged);
 	g_cvEnableSourceTVDemos.AddChangeHook(OnConVarsChanged);
 	g_cvFallingFix.AddChangeHook(OnConVarsChanged);
-	g_cvFOV.AddChangeHook(OnConVarsChanged);
 	g_cvHealthBoost.AddChangeHook(OnConVarsChanged);
 	g_cvHealthModifier.AddChangeHook(OnConVarsChanged);
 	g_cvHalfDamage.AddChangeHook(OnConVarsChanged);
@@ -298,11 +281,9 @@ public void OnPluginStart()
 	g_cvNoFallDamage.AddChangeHook(OnConVarsChanged);
 	g_cvShowAllKills.AddChangeHook(OnConVarsChanged);
 	g_cvSpawnRPG.AddChangeHook(OnConVarsChanged);
-	g_cvStartFOV.AddChangeHook(OnConVarsChanged);
 	g_cvStartHealth.AddChangeHook(OnConVarsChanged);
 	g_cvUpgradePriceHealthBoost.AddChangeHook(OnConVarsChanged);
 	g_cvUpgradePriceColorNickname.AddChangeHook(OnConVarsChanged);
-	g_cvUseFOV.AddChangeHook(OnConVarsChanged);
 	g_cvUseSourceMenus.AddChangeHook(OnConVarsChanged);
 	
 	AutoExecConfig(true, "kdm");
@@ -329,13 +310,11 @@ public void OnPluginStart()
 		g_bEnableModelChanger = false;
 	}
 	
-	HookEvent("game_end", Event_GameEnd, EventHookMode_Post);
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_spawn", Event_PlayerSpawn);
 	
 	AddCommandListener(Handle_Chat, "say");
 	AddCommandListener(Handle_Chat, "say_team");
-	AddCommandListener(OnClientToggleZoom, "toggle_zoom");
 	
 	//Custom admin shit flag is Admin_Custom4.
 	
@@ -391,75 +370,10 @@ public void OnPluginStart()
 	
 	
 	//Downloads:
-	AddFileToDownloadsTable("materials/models/doctor/Back_1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Back_1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Back_o_Hair1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Back_o_Hair1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Back_of_Arm1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Back_of_Arm1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Face_1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Face_1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Foot_btm1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Foot_btm1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Front_1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Front_1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Glove_Btm1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Glove_Btm1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Glove_Top1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Glove_Top1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Gun_Side1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Gun_Side1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/GunTip1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/GunTip1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Side_of_Head1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Side_of_Head1.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/Top_O_Foot.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/Top_O_Foot.vtf");
-	AddFileToDownloadsTable("materials/models/doctor/TopSuit1.vmt");
-	AddFileToDownloadsTable("materials/models/doctor/TopSuit1.vtf");
-	
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/agent_glasses.vmt");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/agent_glasses.vtf");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/agent_lense.vmt");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/agent_lense.vtf");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/eyeball_l.vmt");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/eyeball_r.vmt");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/gambler_eye_ao.vtf");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/gambler_eyes.vtf");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/gordon_head.vmt");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/gordon_head.vtf");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/hevsuit_normal.vtf");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/hevsuit_sheet.vmt");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/hevsuit_sheet.vtf");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/players_sheet.vmt");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/players_sheet.vtf");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/rense.vmt");
-	AddFileToDownloadsTable("materials/models/romsn/hevsuit/rense.vtf");
-	
-	AddFileToDownloadsTable("models/IvanSpaceBiker.dx80.vtx");
-	AddFileToDownloadsTable("models/IvanSpaceBiker.dx90.vtx");
-	AddFileToDownloadsTable("models/ivanspacebiker.mdl");
-	AddFileToDownloadsTable("models/IvanSpaceBiker.phy");
-	AddFileToDownloadsTable("models/IvanSpaceBiker.sw.vtx");
-	AddFileToDownloadsTable("models/ivanspacebiker.vvd");
-	
-	AddFileToDownloadsTable("models/romsn/gordon.dx80.vtx");
-	AddFileToDownloadsTable("models/romsn/gordon.dx90.vtx");
-	AddFileToDownloadsTable("models/romsn/gordon.mdl");
-	AddFileToDownloadsTable("models/romsn/gordon.phy");
-	AddFileToDownloadsTable("models/romsn/gordon.sw.vtx");
-	AddFileToDownloadsTable("models/romsn/gordon.vvd");
-	AddFileToDownloadsTable("models/romsn/gordon_player.dx80.vtx");
-	AddFileToDownloadsTable("models/romsn/gordon_player.dx90.vtx");
-	AddFileToDownloadsTable("models/romsn/gordon_player.mdl");
-	AddFileToDownloadsTable("models/romsn/gordon_player.phy");
-	AddFileToDownloadsTable("models/romsn/gordon_player.sw.vtx");
-	AddFileToDownloadsTable("models/romsn/gordon_player.vvd");
-	
 	//Sound from Black Mesa: Source (2012 Mod)
 	AddFileToDownloadsTable("sound/bms/weapons/jumpmod/jumpmod_long1.mp3");
 	
-	SteamWorks_SetGameDescription("King's DM");
+	SteamWorks_SetGameDescription("Kings DM");
 }
 
 public void OnPluginEnd()
@@ -560,7 +474,6 @@ public void OnClientPutInServer(int iClient)
 	g_bColoredNickname[iClient] = false;
 	g_bDev[iClient] = false;
 	g_bGod[iClient] = false;
-	g_bInZoom[iClient] = false;
 	g_bInvisibility[iClient] = false;
 	g_bJumpBoost[iClient][0] = false;
 	g_bJumpBoost[iClient][1] = false;
@@ -570,7 +483,6 @@ public void OnClientPutInServer(int iClient)
 	g_bLongJump[iClient][1] = false;
 	g_bPlayer[iClient] = true;
 	g_bProtection[iClient] = false;
-	g_bZoom[iClient] = false;
 	
 	g_fLastCombineBallTime[iClient] = 0.0;
 	
@@ -602,8 +514,6 @@ public void OnClientPutInServer(int iClient)
 	
 	SetNicknameColor(iClient, g_sNicknameColor[iClient], g_iCustomNickColor[iClient]);
 	
-	//SetPlayerFOV(iClient, true);
-	
 	CreateTimer(0.1, Timer_ModelChanger, iClient);
 }
 
@@ -618,12 +528,10 @@ public void OnClientDisconnect(int iClient)
 		g_bAutoJump[iClient] = false;
 		g_bDev[iClient] = false;
 		g_bInvisibility[iClient] = false;
-		g_bInZoom[iClient] = false;
 		g_bJumpBoostActivated[iClient] = false;
 		g_bLongJumpPressed[iClient] = false;
 		g_bPlayer[iClient] = false;
 		g_bProtection[iClient] = false;
-		g_bZoom[iClient] = false;
 		
 		SDKUnhook(iClient, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
 		
@@ -647,8 +555,6 @@ public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 	g_bEnableModelChanger = g_cvEnableModelChanger.BoolValue;
 	g_bEnableNickname = g_cvEnableNickname.BoolValue;
 	g_bFallFix = g_cvFallingFix.BoolValue;
-	g_bFOV = g_cvUseFOV.BoolValue;
-	g_iFOV = g_cvFOV.IntValue;
 	g_bAltDamage = g_cvHalfDamage.BoolValue;
 	g_iHealthBoost = g_cvHealthBoost.IntValue;
 	g_fJumpBoost = g_cvJumpBoost.FloatValue;
@@ -665,7 +571,6 @@ public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 	g_cvSourceTV[1].BoolValue = true;
 	g_cvSourceTV[2].IntValue = 0;
 	g_fStandardJumpVel = g_cvDefaultJumpVelocity.FloatValue;
-	g_iStartFOV = g_cvStartFOV.IntValue;
 	g_iStartHealth = g_cvStartHealth.IntValue;
 	
 	g_iUpgrade_Prices[0] = g_cvUpgradePriceHealthBoost.IntValue;
@@ -674,13 +579,12 @@ public void OnConVarsChanged(ConVar convar, char[] oldValue, char[] newValue)
 
 public void OnGameFrame()
 {
-	int iButtons, iFlags;
+	int iFlags;
 	
 	for (int i = 1; i < MaxClients; i++)
 	{
 		if(g_bPlayer[i] && g_bAutoJump[i])
 		{
-			iButtons = GetClientButtons(i);
 			iFlags = GetEntityFlags(i);
 			
 			if((iFlags & FL_ONGROUND) && g_bLongJumpPressed[i])
@@ -792,10 +696,6 @@ public Action OnPlayerRunCmd(int iClient, int &iButtons, int &iImpulse, float fV
 		{
 			g_fLastCombineBallTime[iClient] = GetGameTime();
 		}else{
-			/*PrecacheSound("buttons/combine_button_locked.wav");
-
-			EmitSoundToClient(iClient, "buttons/combine_button_locked.wav", iClient, 2, 150, 0, 0.1, 100, -1, NULL_VECTOR, NULL_VECTOR, true, 0.0);*/
-			
 			if (iButtons & IN_ATTACK2)
 			{
 				iButtons &= ~IN_ATTACK2;
@@ -1368,21 +1268,6 @@ public Action Handle_Chat(int iClient, char[] sCommand, int iArgs)
 	}
 }
 
-public Action OnClientToggleZoom(int iClient, const char[] sCommand, int iArgs)
-{
-	if(g_iZoomStatus[iClient] != ZOOM_NONE)
-	{
-		if(g_iZoomStatus[iClient] == ZOOM_TOGL || g_iZoomStatus[iClient] == ZOOM_SUIT)
-		{
-			g_iZoomStatus[iClient] = ZOOM_NONE;
-		}
-	}else{
-		g_iZoomStatus[iClient] = ZOOM_TOGL;
-	}
-	
-	return Plugin_Continue;
-}
-
 //Plugin Stocks/Extra Voids
 
 //SDKHooks
@@ -1665,19 +1550,6 @@ public void SetNicknameColor(int iClient, char[] sColor, int iColor)
 	}
 }
 
-public void SetPlayerFOV(int iClient, bool bFirstJoin)
-{
-	if(g_bFOV)
-	{
-		Client_SetFOV(iClient, bFirstJoin ? g_iStartFOV : 80);
-		
-		for (int i = Client_GetFOV(iClient); i <= g_iFOV; i++)
-		{
-			Client_SetFOV(iClient, i);
-		}
-	}
-}
-
 public bool SetPlayerModel(int iClient, char[] sModelName)
 {
 	char sModel[256];
@@ -1854,8 +1726,6 @@ public Action Event_PlayerDeath(Event eEvent, char[] sName, bool bDontBroadcast)
 	Format(sClient, sizeof(sClient), "{%s}%N{default}", StrEqual(g_sNicknameColor[iClient], "") ? "default" : g_sNicknameColor[iClient], iClient);
 	
 	Format(sAttackerHealth, sizeof(sAttackerHealth), "({green}%d{default} hp, {green}%d{default} suit)", GetClientHealth(iAttacker), GetClientArmor(iAttacker));
-	
-	Client_SetFOV(iClient, 90);
 	
 	int iRandom;
 	
@@ -2115,37 +1985,11 @@ public Action Event_PlayerSpawn(Event eEvent, char[] sName, bool bDontBroadcast)
 	if(g_bEnableInvisibility && g_bInvisibility[iClient])
 	SetEntityRenderFx(iClient, RENDERFX_DISTORT);
 	
-	//CreateTimer(0.1, Timer_FOV, iClient);
-	
 	SetEntityHealth(iClient, g_iStartHealth);
 	
 	SetEntProp(iClient, Prop_Send, "m_nBody", 1);
 	
 	g_fSpawnTime[iClient] = GetGameTime();
-	
-	return Plugin_Continue;
-}
-
-public Action Event_GameEnd(Event eEvent, char[] sName, bool bDontBroadcast)
-{
-	/*char sMap[128], sMessage[MAX_MESSAGE_LENGTH];
-	int iClient = GetClientOfUserId(eEvent.GetInt("winner"));
-	
-	CPrintToChatAll("{red}[KINGS]{default} Congratulations to {%s}%N{default} for winning round with {green}%i{default} kills and {green}%i{default} deaths.", view_as<bool>(GetRandomInt(0, 1)) ? "blue" : "green", g_iKills[iClient], g_iDeaths[iClient]);
-	
-	Format(sMessage, sizeof(sMessage), "King's Deathmatch | Map: %s\n", sMap);
-	
-	for (int i = 1; i < MaxClients; i++)
-	{
-		if(g_bPlayer[i] && !IsClientSourceTV(i))
-		{
-			Format(sMessage, sizeof(sMessage), "%s%N - Kills: %i | Deaths: %i\n", i == iClient ? "[WINNER] " : "", g_iKills[i], g_iDeaths[i]);
-		}
-	}
-	
-	Discord_EscapeString(sMessage, sizeof(sMessage));
-	
-	Discord_SendMessage("test_discord", sMessage);*/
 	
 	return Plugin_Continue;
 }
@@ -2231,35 +2075,20 @@ public Action Timer_Fire(Handle hTimer, any iClient)
 {
 	if(g_bPlayer[iClient])
 	{
-		float fForce[3], fVelocity[3];
+		float fVelocity[3];
 		
 		int iRagdoll = GetEntPropEnt(iClient, Prop_Send, "m_hRagdoll");
-		
-		GetEntPropVector(iRagdoll, Prop_Send, "m_vecForce", fForce);
-		
-		fForce[0] *= 45.0;
-		fForce[1] *= 45.0;
-		fForce[2] *= 45.0;
-		
-		SetEntPropVector(iRagdoll, Prop_Send, "m_vecForce", fForce);
 		
 		GetEntPropVector(iRagdoll, Prop_Send, "m_vecRagdollVelocity", fVelocity);
 		
 		fVelocity[0] *= 25.0;
-		fVelocity[1] *= 25.0;
+		fVelocity[1] *= 0.0;
 		fVelocity[2] *= 25.0;
 		
-		SetEntPropVector(iRagdoll, Prop_Send, "m_vecRagdollVelocity", fVelocity);
+		TeleportEntity(iRagdoll, NULL_VECTOR, NULL_VECTOR, fVelocity);
 		
 		IgniteEntity(iRagdoll, 5.0);
 	}
-	
-	return Plugin_Continue;
-}
-
-public Action Timer_FOV(Handle hTimer, any iClient)
-{
-	SetPlayerFOV(iClient, true);
 	
 	return Plugin_Continue;
 }

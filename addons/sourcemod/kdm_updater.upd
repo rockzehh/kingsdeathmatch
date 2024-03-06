@@ -12,8 +12,8 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.4-r3"
-			"Previous"	"2.4-r2"
+			"Latest"	"2.4-r4"
+			"Previous"	"2.4-r3"
 		}
 		
 		"Notes"	"Removed the player name from the HUD to make sure all text shows up."
