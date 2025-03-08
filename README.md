@@ -2,9 +2,9 @@
 
 **King’s Deathmatch** is a customized deathmatch plugin with extra features to enhance the standard gameplay.
 
-Latest release is [*1.4.0*](https://github.com/rockzehh/kingsdeathmatch/releases/tag/1.4.0), current working version is *2.0*.
+Latest release is [1.5.0*](https://github.com/rockzehh/kingsdeathmatch/releases/tag/1.5.0).
 
-Built against SourceMod *1.11.0-git6826* and Metamod: Source *1.12.0-git1157*.
+Built against SourceMod *1.12.0-git7193* and Metamod: Source *2.0.0-git1334*.
 
 This plugin uses [Updater](https://forums.alliedmods.net/showthread.php?t=169095) to update its files, and is required.
 This plugin uses [More Colors](https://forums.alliedmods.net/showthread.php?t=185016) for the text color. It is required if you want to recompile the plugin.
@@ -35,5 +35,4 @@ This plugin is designed with Half-Life 2: Deathmatch in mind. This may work on o
 
 The long jump air sound is from the Black Mesa: Source 2012 Mod.
 
-## Contributing
-Currently, this project is not accepting outside contributions to the official repository.
+This plugin contains crude, immature language through death messages.

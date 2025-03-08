@@ -1,10 +1,8 @@
 //King's Deathmatch: Developed by King Nothing.
 #pragma semicolon 1
 
-#define DEBUG
-
-#define PLUGIN_AUTHOR "RockZehh"
-#define PLUGIN_VERSION "2.4-r4"
+#define PLUGIN_AUTHOR "rockzehh"
+#define PLUGIN_VERSION "1.5.0"
 
 #define MAX_BUTTONS 26
 
@@ -189,6 +187,51 @@ public void OnLibraryAdded(const char[] sName)
 //Plugin Voids
 public void OnPluginStart()
 {
+	for (int i = 1; i < MaxClients; i++)
+	{
+		if (IsClientAuthorized(i))
+		{
+			OnClientPutInServer(i);
+		}
+	}
+	
+	if (LibraryExists("updater"))
+	{
+		Updater_AddPlugin(UPDATE_URL);
+	}
+	
+	g_smDeaths = CreateTrie();
+	g_smHeadshots = CreateTrie();
+	g_smKills = CreateTrie();
+	
+	g_kvAdvertisements = new KeyValues("Advertisements");
+	
+	g_kvAdvertisements.ImportFromFile(g_sAdvertisementsDatabase);
+	
+	AutoExecConfig(true, "kdm");
+	
+	char sPath[PLATFORM_MAX_PATH];
+	
+	BuildPath(Path_SM, sPath, sizeof(sPath), "data/kdm");
+	if (!DirExists(sPath))
+	{
+		CreateDirectory(sPath, 511);
+	}
+	
+	BuildPath(Path_SM, g_sAdvertisementsDatabase, PLATFORM_MAX_PATH, "data/kdm/advertisements.txt");
+	if(!FileExists(g_sAdvertisementsDatabase))
+	{
+		g_bNoAdvertisements = false;
+	}
+	
+	BuildPath(Path_SM, g_sClientsDatabase, PLATFORM_MAX_PATH, "data/kdm/clients.txt");
+	
+	BuildPath(Path_SM, g_sModelsDatabase, PLATFORM_MAX_PATH, "data/kdm/models.txt");
+	if(!FileExists(g_sModelsDatabase))
+	{
+		g_bEnableModelChanger = false;
+	}
+	
 	CreateConVar("kings-deathmatch", "1", "Notifies the server that the plugin is running.");
 	
 	g_cvAllowAutoJump = CreateConVar("kdm_server_allow_autojump", "1", "If users can use autojump.", _, true, 0.1, true, 1.0);
@@ -286,45 +329,19 @@ public void OnPluginStart()
 	g_cvUpgradePriceColorNickname.AddChangeHook(OnConVarsChanged);
 	g_cvUseSourceMenus.AddChangeHook(OnConVarsChanged);
 	
-	AutoExecConfig(true, "kdm");
-	
-	char sPath[PLATFORM_MAX_PATH];
-	
-	BuildPath(Path_SM, sPath, sizeof(sPath), "data/kdm");
-	if (!DirExists(sPath))
-	{
-		CreateDirectory(sPath, 511);
-	}
-	
-	BuildPath(Path_SM, g_sAdvertisementsDatabase, PLATFORM_MAX_PATH, "data/kdm/advertisements.txt");
-	if(!FileExists(g_sAdvertisementsDatabase))
-	{
-		g_bNoAdvertisements = false;
-	}
-	
-	BuildPath(Path_SM, g_sClientsDatabase, PLATFORM_MAX_PATH, "data/kdm/clients.txt");
-	
-	BuildPath(Path_SM, g_sModelsDatabase, PLATFORM_MAX_PATH, "data/kdm/models.txt");
-	if(!FileExists(g_sModelsDatabase))
-	{
-		g_bEnableModelChanger = false;
-	}
-	
 	HookEvent("player_death", Event_PlayerDeath);
 	HookEvent("player_spawn", Event_PlayerSpawn);
 	
 	AddCommandListener(Handle_Chat, "say");
 	AddCommandListener(Handle_Chat, "say_team");
 	
-	//Custom admin shit flag is Admin_Custom4.
+	//Custom Admin flag is Admin_Custom4.
 	
 	RegAdminCmd("dev_gmode", Dev_GodMode, view_as<int>(Admin_Custom4), "Gives the player god mode. This is for development purposes ONLY.");
 	RegAdminCmd("sm_setcredits", Command_SetCredits, view_as<int>(Admin_Custom4), "Changes the players credits.");
-	RegAdminCmd("sm_setnickcolor", Command_SetNickColor, view_as<int>(Admin_Custom4), "Changes the players nickname color, support for custom ones..");
+	RegAdminCmd("sm_setnickcolor", Command_SetNickColor, view_as<int>(Admin_Custom4), "Changes the players nickname color, support for custom ones.");
 	RegAdminCmd("sm_setnickname", Command_SetNickname, view_as<int>(Admin_Custom4), "Sets the player nickname.");
-	
-	//RegConsoleCmd("sm_aj", Command_AutoJump, "Gives you perfect jumps.");
-	//RegConsoleCmd("sm_autojump", Command_AutoJump, "Gives you perfect jumps.");
+
 	RegConsoleCmd("sm_boost", Command_HealthBoost, "Adds a boost of health.");
 	RegConsoleCmd("sm_changemodel", Command_PlayerModel, "Changes your player model.");
 	RegConsoleCmd("sm_changenickname", Command_ChangeNickname, "Changes your player nickname.");
@@ -346,28 +363,6 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_privatematch", Command_PrivateMatch, "Sets the match to private with a password.");
 	RegConsoleCmd("sm_showdeathhealth", Command_ShowDeathHealth, "Changes if the player sees the attackers health in the death message.");
 	RegConsoleCmd("sm_store", Command_Credits, "Brings up the credit menu.");
-	
-	for (int i = 1; i < MaxClients; i++)
-	{
-		if (IsClientAuthorized(i))
-		{
-			OnClientPutInServer(i);
-		}
-	}
-	
-	if (LibraryExists("updater"))
-	{
-		Updater_AddPlugin(UPDATE_URL);
-	}
-	
-	g_smDeaths = CreateTrie();
-	g_smHeadshots = CreateTrie();
-	g_smKills = CreateTrie();
-	
-	g_kvAdvertisements = new KeyValues("Advertisements");
-	
-	g_kvAdvertisements.ImportFromFile(g_sAdvertisementsDatabase);
-	
 	
 	//Downloads:
 	//Sound from Black Mesa: Source (2012 Mod)
@@ -469,7 +464,6 @@ public void OnClientPutInServer(int iClient)
 		Client_SetScore(iClient, iKills);
 	}
 	
-	//Custom admin shit flag is Admin_Custom4.
 	g_bAutoJump[iClient] = false;
 	g_bColoredNickname[iClient] = false;
 	g_bDev[iClient] = false;

@@ -3,7 +3,6 @@
 	"Files"
 	{
 		"Source"	"Path_SM/data/kdm/advertisements.txt"
-		"Source"	"Path_SM/include/morecolors.inc"
 		"Plugin"	"Path_SM/plugins/kdm_main.smx"
 		"Source"	"Path_SM/scripting/kdm_main.sp"
 	}
@@ -12,8 +11,8 @@
 	{
 		"Version"
 		{
-			"Latest"	"2.4-r4"
-			"Previous"	"2.4-r3"
+			"Latest"	"1.5.0"
+			"Previous"	"1.4.0"
 		}
 		
 		"Notes"	"Removed the player name from the HUD to make sure all text shows up."
