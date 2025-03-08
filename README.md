@@ -2,7 +2,7 @@
 
 **King’s Deathmatch** is a customized deathmatch plugin with extra features to enhance the standard gameplay.
 
-Latest release is [1.5.0*](https://github.com/rockzehh/kingsdeathmatch/releases/tag/1.5.0).
+Latest release is [1.5.0](https://github.com/rockzehh/kingsdeathmatch/releases/tag/1.5.0).
 
 Built against SourceMod *1.12.0-git7193* and Metamod: Source *2.0.0-git1334*.
 
