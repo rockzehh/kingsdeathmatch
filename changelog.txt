@@ -1,6 +1,6 @@
 King's Deathmatch - Changelog:
 
-v2.0:
+v1.5.0:
 	Added:
 		+ Added the functionality to save scores if you disconnect and rejoin that same round.
 		+ Added a cooldown timer to the AR2 Combine Ball launcher to reduce spam.
